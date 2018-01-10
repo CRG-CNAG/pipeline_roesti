@@ -1,5 +1,9 @@
 # Jupyter checkpoints files
 .ipynb_checkpoints
+__pycache__
+
+*.sublime-project
+*.sublime-workspace
 
 ### Github template for python project ignore files
 
