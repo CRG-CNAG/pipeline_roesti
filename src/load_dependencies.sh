@@ -35,4 +35,4 @@ export LD_LIBRARY_PATH="/users/lserrano/mweber/Software/zlib-1.2.8/lib:$LD_LIBRA
 #export PATH="/users/lserrano/mweber/Software/bedtools2/bin":$PATH
 
 # Loading Python virtual env
-source /users/lserrano/mweber/Research_Dropbox/Python_mwTools/load_python_virtualenv_cluster.sh
+source /users/lserrano/mweber/Research_cloud/Python_mwTools/load_python_virtualenv_cluster.sh
