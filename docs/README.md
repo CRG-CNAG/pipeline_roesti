@@ -1,7 +1,7 @@
 ---
 author: "Marc Weber"
 title: "RNA-seq pipeline roesti, tutorial"
-date: 2017.11.23
+date: 2018.01.26
 link-citations: "true"
 css: "/users/lserrano/mweber/Research_cloud/Python_mwTools/pandoc-notebook/CSS/pandoc.css"
 bibliography: "/users/lserrano/mweber/Research_cloud/Bibliography/library.bib"
