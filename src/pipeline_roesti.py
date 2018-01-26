@@ -88,16 +88,16 @@ parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality
 parser.add_argument('--indexed-ref-genome', dest='align_indexed_ref_genome_path', default='/users/lserrano/mweber/Ribosome_profiling_data/bowtie2_indexed_genome/Mpn/NC_000912',
                     help="Path to the basename of the index for the reference genome built with bowtie2-build.")
 parser.add_argument('--rRNA-bedfile', dest='rRNA_bedfile',
-                    default="/users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_rRNA.bed",
+                    default="/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_rRNA.bed",
                     help="Path to the BED file of rRNA regions. Reads aligning in the first rRNA region will be used to determine the strandness.")
 parser.add_argument('--rRNA-tRNA-bedfile', dest='rRNA_tRNA_bedfile',
-                    default="/users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_rRNA_tRNA.bed",
+                    default="/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_rRNA_tRNA.bed",
                     help="Path to the BED file of rRNAs and tRNAs regions of the genome. If the option remove-rRNA is set, all reads aligning in these regions will be filtered out.")
 parser.add_argument('--genome-bedfile', dest='genomeBedFile',
-                    default="/users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Genome/NC_000912.1.genome",
+                    default="/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Genome/NC_000912.1.genome",
                     help="Path to the BED file genome. Simple BED file that lists the names of the chromosomes (or scaffolds, etc.) and their size (in basepairs).")
 parser.add_argument('--genome-CDS-bedfile', dest='genomeCDSBedFile',
-                    default="/users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_CDS.bed",
+                    default="/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_CDS.bed",
                     help="Path to the BED file for all CDS. Will be used to count mRNA fragments for each gene. If set to empty string \"\", the computation of fragment count per CDS will be skipped.")
 parser.add_argument('--nthreads', dest='nThreads', default=12, type=int,
                     help='Number of threads to use in each cluster node (shared memory). This will reduce computational time, in particular for bowtie2 (alignment).')
@@ -158,7 +158,7 @@ def group_paired_end_fastq_files(fastqFiles):
 
 # Paths
 rootPath = Path('/users/lserrano/mweber')
-scriptPath = rootPath / 'Research_Dropbox' / 'RNA-seq_data_analysis' / 'src'
+scriptPath = rootPath / 'Research_cloud' / 'RNA-seq_data_analysis' / 'src'
 # rnaSeq_data_path = rootPath / 'Translation_model' / 'Ribosome_profiling_data'
 # Note: here we must use the full pathname!!!
 outputPath = Path(options.output_dir).resolve()

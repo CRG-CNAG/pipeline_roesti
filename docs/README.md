@@ -3,8 +3,8 @@ author: "Marc Weber"
 title: "RNA-seq pipeline roesti, tutorial"
 date: 2017.11.23
 link-citations: "true"
-css: "/users/lserrano/mweber/Research_Dropbox/Python_mwTools/pandoc-notebook/CSS"
-bibliography: "/users/lserrano/mweber/Research_Dropbox/Bibliography/library.bib"
+css: "/users/lserrano/mweber/Research_cloud/Python_mwTools/pandoc-notebook/CSS/pandoc.css"
+bibliography: "/users/lserrano/mweber/Research_cloud/Bibliography/library.bib"
 wordpress_site_url: "www.marcweber.net/labnotebook"
 wordpress_username: "mweber"
 wordpress_status: "publish"
@@ -40,7 +40,7 @@ ssh user1@ant-login.linux.crg.es
 ```
 Load the dependencies (python3 and others) needed for the pipeline,
 ```bash
-source /users/lserrano/mweber/Research_Dropbox/RNA-seq_data_analysis/src/load_dependencies.sh
+source /users/lserrano/mweber/Research_cloud/RNA-seq_data_analysis/src/load_dependencies.sh
 ```
 You should now be in the python3 virtual environment, as indicated by the login prompt:
 ```
@@ -216,7 +216,7 @@ nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz
 
 In this case, we have to give as input the Genbank or fasta files for the reference genome and for the construct. An updated version of the reference genome of Mycoplasma_pneumoniae M129 with the latest annotations in Genbank flat file format can be found at the following path:
 ```bash
-/users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff
+/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff
 ```
 This Genbank file was created from the following information sources:
 
@@ -228,13 +228,13 @@ This Genbank file was created from the following information sources:
 In addition, we need the DNA sequence of the construct, which can be either in Genbank or fasta format. The DNA sequence files will be automatically parsed, indexed for the bowtie2 aligner and the list of CDS from Genbank annotations extracted. If the construct sequence is in Genbank format, we can list both files (whitespace separated) after the option `--ref-genbank`,
 ```bash
 nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz \
-    --ref-genbank /users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff \
+    --ref-genbank /users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff \
     /pathto/construct_plasmid.gb &
 ```
 If the construct sequence is in fasta format, we use the option `--ref-fasta`,
 ```bash
 nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz \
-    --ref-genbank /users/lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff \
+    --ref-genbank /users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff \
     --ref-fasta /pathto/construct_plasmid.fna &
 ```
 
@@ -464,14 +464,14 @@ optional arguments:
                         Path to the BED file of rRNAs and tRNAs regions of the
                         genome. If the option remove-rRNA is set, all reads
                         aligning in these regions will be filtered out.
-                        (default: /users/lserrano/mweber/Research_Dropbox/Myco
+                        (default: /users/lserrano/mweber/Research_cloud/Myco
                         plasma_pneumoniae_experimental_data/Annotation/mpn_rRN
                         A_tRNA.bed)
   --genome-bedfile GENOMEBEDFILE
                         Path to the BED file genome. Simple BED file that
                         lists the names of the chromosomes (or scaffolds,
                         etc.) and their size (in basepairs). (default: /users/
-                        lserrano/mweber/Research_Dropbox/Mycoplasma_pneumoniae
+                        lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae
                         _experimental_data/Genome/NC_000912.1.genome)
   --genome-CDS-bedfile GENOMECDSBEDFILE
                         Path to the BED file for all CDS. Will be used to
