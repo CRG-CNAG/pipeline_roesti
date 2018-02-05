@@ -14,8 +14,9 @@ wordpress_toc: "true"
 
 ---
 
-For those who prefer to skip the details, read directly the [Usage](#usage) and the [Examples](#examples) sections.
+Note: This document is in markdown format. Some formatting cannot be displayed by the Github web frontend, as for example mathematical expressions. Please download the self-contained html file or the pdf file in the `docs` directory.
 
+For those who prefer to skip the details, read directly the [Examples](#examples) sections.
 
 ## Description
 
@@ -202,7 +203,7 @@ qdel -u user1
 Because the pipeline is using the [Ruffus](http://www.ruffus.org.uk/) framework, it is possible to resume the computation at a specific task. By default, you can re-launch the pipeline and it will resume from the last incomplete task. If you want to re-run a specific task, just *delete the output files* or the *directory* "TaskXX" and re-run the pipeline. The pipeline will resume the computation at the step where the output files are missing. If you want to re-run the full pipeline, delete all the output files and re-run the pipeline.
 
 
-# Examples
+## Examples
 
 ### Example: RNA-seq for Mycoplasma pneumoniae
 
@@ -383,14 +384,16 @@ usage: pipeline_roesti [-h] [--verbose [VERBOSE]] [--version] [-L FILE]
                        [--genome-bedfile GENOMEBEDFILE]
                        [--genome-CDS-bedfile GENOMECDSBEDFILE]
                        [--nthreads NTHREADS] [--njobsmax NJOBS]
-                       [--bash-profile BASH_PROFILE] [--jobid JOBID]
+                       [--bash-profile BASH_PROFILE] [--analysisId ANALYSISID]
+                       [--sendMessageToWebServer]
 
 pipeline_roesti Pipeline to analyze RNA-seq data from RNA-seq and Ribo-seq
 (ribosome profiling) experiments. Python 3.5 script. | Author: Marc Weber |
-Last updated: 2017.02.14 | Affiliation: Center for Genomic Regulation, Luis
-Serrano's lab | email: webermarcolivier@gmail.com | Remark: we refer to insert
-as the original RNA fragment flanked by adapters and read by sequencing (as
-opposed to "insert" as the inner interval between two paired reads).
+Last updated: 2017.11.23 | Affiliation: Center for Genomic Regulation, Luis
+Serrano's lab | email: webermarcolivier@gmail.com; marc.weber@crg.eu | Remark:
+we refer to insert as the original RNA fragment flanked by adapters and read
+by sequencing (as opposed to "insert" as the inner interval between two paired
+reads).
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -422,11 +425,11 @@ optional arguments:
                         submitting jobs to the cluster). Note that multiple
                         threads could be used. (default: False)
   --pipeline-name PIPELINE_NAME
-                        Name of the pipeline. Results will be written in
-                        "output-dir/pipeline-name". Important: the history of
-                        up-to-date files is kept in a database of the same
-                        name, .pipeline_roesti_2.ruffus_history.sqlite.
-                        (default: pipeline_roesti)
+                        Name of the pipeline. Important: the history of up-to-
+                        date files is kept in a database of the same name in
+                        the output folder,
+                        .pipeline_roesti.ruffus_history.sqlite. (default:
+                        pipeline_roesti)
   --library-type {ribo-seq,rna-seq}
                         Type of RNA-seq library. In ribosome profiling data
                         analysis, additional fragment filtering is applied in
@@ -458,28 +461,28 @@ optional arguments:
                         Path to the BED file of rRNA regions. Reads aligning
                         in the first rRNA region will be used to determine the
                         strandness. (default: /users/lserrano/mweber/Research_
-                        Dropbox/Mycoplasma_pneumoniae_experimental_data/Annota
-                        tion/mpn_rRNA.bed)
+                        cloud/Mycoplasma_pneumoniae_experimental_data/Annotati
+                        on/mpn_rRNA.bed)
   --rRNA-tRNA-bedfile RRNA_TRNA_BEDFILE
                         Path to the BED file of rRNAs and tRNAs regions of the
                         genome. If the option remove-rRNA is set, all reads
                         aligning in these regions will be filtered out.
-                        (default: /users/lserrano/mweber/Research_cloud/Myco
-                        plasma_pneumoniae_experimental_data/Annotation/mpn_rRN
-                        A_tRNA.bed)
+                        (default: /users/lserrano/mweber/Research_cloud/Mycopl
+                        asma_pneumoniae_experimental_data/Annotation/mpn_rRNA_
+                        tRNA.bed)
   --genome-bedfile GENOMEBEDFILE
                         Path to the BED file genome. Simple BED file that
                         lists the names of the chromosomes (or scaffolds,
                         etc.) and their size (in basepairs). (default: /users/
-                        lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae
-                        _experimental_data/Genome/NC_000912.1.genome)
+                        lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_e
+                        xperimental_data/Genome/NC_000912.1.genome)
   --genome-CDS-bedfile GENOMECDSBEDFILE
                         Path to the BED file for all CDS. Will be used to
                         count mRNA fragments for each gene. If set to empty
                         string "", the computation of fragment count per CDS
                         will be skipped. (default: /users/lserrano/mweber/Rese
-                        arch_Dropbox/Mycoplasma_pneumoniae_experimental_data/A
-                        nnotation/mpn_CDS.bed)
+                        arch_cloud/Mycoplasma_pneumoniae_experimental_data/Ann
+                        otation/mpn_CDS.bed)
   --nthreads NTHREADS   Number of threads to use in each cluster node (shared
                         memory). This will reduce computational time, in
                         particular for bowtie2 (alignment). (default: 12)
@@ -492,9 +495,14 @@ optional arguments:
                         bash profile path is automatically detected in user's
                         home directory, this option sets the path manually.
                         (default: )
-  --jobid JOBID         Integer that identifies the overall pipeline run. It
-                        is independent from the jobids of the job submissions.
-                        (default: 0)
+  --analysisId ANALYSISID
+                        Integer that identifies the overall pipeline run. It
+                        is independent from the jobids of the job submissions
+                        on the cluster grid engine. (default: None)
+  --sendMessageToWebServer
+                        Send a message to the webserver dbspipe when the
+                        pipeline has finished. Only for pipeline launched by
+                        the web server application. (default: False)
 
 Common options:
   --verbose [VERBOSE], -v [VERBOSE]
@@ -536,4 +544,4 @@ pipeline arguments:
                         date. (default: [])
 ```
 
-# Bibliography
+## Bibliography
