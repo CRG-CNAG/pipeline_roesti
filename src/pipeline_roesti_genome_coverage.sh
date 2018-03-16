@@ -16,13 +16,17 @@ GENOME_CDS_BED_FILE=$8
 RRNA_BED_FILE=$9
 NTHREADS=1
 
+# Test variables
 # $BED_FILE $SAMPLE $INPUT_PATH $OUTPUT_PATH $USE_LOCAL_DISK $SCRIPT_PATH bedfile.bed
-# SAMPLE="MPN_RP6_S1_14715_CGATGT"
-# INPUT_PATH="Task04_filter_alignments"
-# OUTPUT_PATH="Task06_genome_coverage"
-# BED_FILE=${INPUT_PATH}/"MPN_RP6_S1_14715_CGATGT.rRNA_removed.bed"
+# SAMPLE="test"
+# INPUT_PATH="Task05_filter_alignments"
+# OUTPUT_PATH="Task07_genome_coverage_fragment_count"
+# BED_FILE=${INPUT_PATH}/"test.rRNA_removed.bed"
+# GENOME_CDS_BED_FILE="NC_000912.1/NC_000912.1_CDS.bed"
+# RRNA_BED_FILE="NC_000912.1/NC_000912.1_rRNA.bed"
 # USE_LOCAL_DISK=false
-# SCRIPT_PATH="/users/lserrano/mweber/Research_Dropbox/RNA-seq_data_analysis/src"
+# SCRIPT_PATH="/users/lserrano/mweber/Research_cloud/RNA-seq_data_analysis/src"
+# OUTPUT_PATH_LOCAL=${OUTPUT_PATH}
 
 if [ "$USE_LOCAL_DISK" = true ] ; then
     echo "Using local disk for computations"

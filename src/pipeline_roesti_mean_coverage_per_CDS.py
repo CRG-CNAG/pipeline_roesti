@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import re
 import matplotlib.pyplot as plt
 import seaborn
 seaborn.set_style("whitegrid")
@@ -197,7 +198,9 @@ plot_filename = str(Path(args.output_path) / "{}.CDS_fragment_count_avg_coverage
 fig = plt.figure(figsize=(14,12))
 ax = fig.add_subplot(111)
 ax.set_title(args.sample_name)
-seaborn.lmplot(x="fragment_count_per_base", y="avg_coverage", data=dataDf)
+# Drop the ribosomal RNA which would mask the real correlation beteween CDS measures
+plotDf = dataDf[dataDf['id'].map(lambda x: x not in rRNAList)].copy()
+seaborn.lmplot(x="fragment_count_per_base", y="avg_coverage", data=plotDf)
 plt.savefig(plot_filename)
 
 plot_filename = str(Path(args.output_path) / "{}.CDS_normalization_methods_corr.png".format(args.sample_name))
@@ -205,7 +208,7 @@ fig, ax = plt.subplots(figsize=(22, 22))
 ax.set_title(args.sample_name)
 
 seaborn.set(font_scale=0.7)
-grid = seaborn.pairplot(data=dataDf,
+grid = seaborn.pairplot(data=plotDf,
                         vars=['avg_coverage', 'fragment_count', 'FPKM',
                               'TPM (based on fragment count)', 'TPM (based on average coverage)'],
                         hue='fragment_count < 100', kind='reg')
