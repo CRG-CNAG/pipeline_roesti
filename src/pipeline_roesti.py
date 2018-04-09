@@ -85,7 +85,7 @@ parser.add_argument('--remove-rRNA', dest='remove_rRNA', action='store_true',
                     help='Remove reads that align to the rRNA.')
 parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=15, type=int,
                     help='Filter out reads with alignment quality score MAPQ smaller than the threshold.')
-parser.add_argument('--indexed-ref-genome', dest='align_indexed_ref_genome_path', default='/users/lserrano/mweber/Ribosome_profiling_data/bowtie2_indexed_genome/Mpn/NC_000912',
+parser.add_argument('--indexed-ref-genome', dest='align_indexed_ref_genome_path', default='/users/lserrano/mweber/RNA-seq_data/bowtie2_indexed_genome/Mpn/NC_000912',
                     help="Path to the basename of the index for the reference genome built with bowtie2-build.")
 parser.add_argument('--rRNA-bedfile', dest='rRNA_bedfile',
                     default="/users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/mpn_rRNA.bed",
@@ -107,6 +107,7 @@ parser.add_argument('--bash-profile', dest='bash_profile', default='',
                     help='Bash profile is executed before each job on the cluster in order to load the dependencies. By default bash profile path is automatically detected in user\'s home directory, this option sets the path manually.')
 parser.add_argument('--analysisId', default=None, type=int,
                     help="Integer that identifies the overall pipeline run. It is independent from the jobids of the job submissions on the cluster grid engine.")
+parser.add_argument('--deleteIntermediateFiles', dest='delete_intermediate_files', action='store_true', default=False)
 parser.add_argument('--sendMessageToWebServer', action='store_true',
                     help="Send a message to the webserver dbspipe when the pipeline has finished. Only for pipeline launched by the web server application.")
 options = parser.parse_args()
@@ -450,9 +451,11 @@ pipelineDoc += infoStr
 
 
 
+taskPathList = []
 iTask += 1
 task_name = "trim_adapter_PE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+taskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for paired-end library type
 @active_if(options.seq_end == 'paired-end')
@@ -587,6 +590,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = "trim_adapter_SE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+taskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for single-end library type
 @active_if(options.seq_end == 'single-end')
@@ -780,6 +784,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'align_seq'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+taskPathList.append(task_path)
 if options.seq_end == 'single-end':
     regexInputFiles = r'^(.+/)*(?P<SAMPLENAME>.+)\.trimmed\.fastq(\.gz)?.*'
 elif options.seq_end == 'paired-end':
@@ -910,6 +915,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'convert_sam_to_bam'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+taskPathList.append(task_path)
 @follows(align_seq, mkdir(str(task_path)))
 @transform(align_seq,
 
@@ -989,6 +995,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'filter_alignments'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+taskPathList.append(task_path)
 @follows(convert_sam_to_bam, mkdir(str(task_path)))
 @transform(convert_sam_to_bam,
 
@@ -1120,6 +1127,7 @@ task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
 # Only run this analysis for ribo-seq data type
 if options.library_type == 'ribo-seq':
     task_path.mkdir(exist_ok=True)
+    finalResultsPath = task_path
 @active_if(options.library_type == 'ribo-seq')
 # @follows(filter_alignments, mkdir(str(task_path)))
 @transform(filter_alignments,
@@ -1253,6 +1261,7 @@ task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
 # Only run this analysis for rna data type
 if options.library_type == 'rna-seq':
     task_path.mkdir(exist_ok=True)
+    finalResultsPath = task_path
 @active_if(options.library_type == 'rna-seq')
 @follows(filter_alignments, mkdir(str(task_path)))
 @transform(filter_alignments,
@@ -1325,6 +1334,8 @@ def genome_coverage_fragment_count(reads_bed_file,
     with logger_mutex:
         logger.debug(task_name + " finished.")
 
+    finalResultsPath = task_path
+
 
 
 #############################################################################
@@ -1343,10 +1354,31 @@ pipelineDoc += infoStr
 
 #############################################################################
 iTask += 1
-task_name = 'write_jobid_files'
+task_name = 'delete_intermediate_files'
 
 
 @follows(genome_coverage_fragment_count)
+@active_if(options.delete_intermediate_files)
+def delete_intermediate_files():
+
+    print("Delete intermediate files.")
+    for p in taskPathList:
+        for f in p.glob('*'):
+            print("deleting file:", f)
+            f.unlink()
+        Path(p).rmdir()
+
+    with logger_mutex:
+        logger.debug(task_name + " finished.")
+
+
+
+#############################################################################
+iTask += 1
+task_name = 'write_jobid_files'
+
+
+@follows(delete_intermediate_files)
 def write_jobid_files():
 
     # Check that final output files exist
@@ -1394,6 +1426,7 @@ def write_jobid_files():
         jsonData = {'action':10070, 'jsonData':{'analysisId':options.analysisId, 'status':status, 'comments':comments}}
         print("Sending message to web server via websocket:", json.dumps(jsonData))
         ws.send(json.dumps(jsonData))
+
 
 
 #############################################################################
