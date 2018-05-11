@@ -615,9 +615,8 @@ def trim_adapter_SE_reads(input_file,
     # Approximate computation time in seconds per reads per thread measured for test run
     comp_time = (nReadsApprox * (((2*60) * 1) / 5e4)) / options.trim_adapter_nthreads
 
-    skewerPath = "/users/lserrano/mweber/bin/"
     cmd = cmd_source_bash_profile +\
-        skewerPath + "skewer-0.2.2-linux-x86_64 " +\
+        " skewer-0.2.2-linux-x86_64 " +\
         " " + input_file +\
         " -x " + options.trim_adapter_seq_forward +\
         " -l " + str(options.trim_adapter_min_length) +\
