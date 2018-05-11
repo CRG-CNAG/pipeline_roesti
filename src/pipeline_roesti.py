@@ -514,7 +514,7 @@ def trim_adapter_PE_reads(input_files,
         job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=3G,virtual_free=3G" +\
+                            " -l h_vmem=6G,virtual_free=6G" +\
                             " -cwd"
 
         # ruffus.drmaa_wrapper.run_job
@@ -638,7 +638,7 @@ def trim_adapter_SE_reads(input_file,
         job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=3G,virtual_free=3G" +\
+                            " -l h_vmem=6G,virtual_free=6G" +\
                             " -cwd"
 
         # ruffus.drmaa_wrapper.run_job
