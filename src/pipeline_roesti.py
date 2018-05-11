@@ -514,7 +514,7 @@ def trim_adapter_PE_reads(input_files,
         job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=6G,virtual_free=6G" +\
+                            " -l h_vmem=3G,virtual_free=3G" +\
                             " -cwd"
 
         # ruffus.drmaa_wrapper.run_job
@@ -598,7 +598,6 @@ taskPathList.append(task_path)
 
     formatter(r'^/?(.+/)*(?P<SAMPLENAME>.+)\.fastq(\.gz)?$'),
 
-
     # Create output parameter supplied to next task
     [str(task_path) + "/{SAMPLENAME[0]}.trimmed.fastq",
      str(task_path) + "/{SAMPLENAME[0]}.trimmed.nreads"],
@@ -622,7 +621,8 @@ def trim_adapter_SE_reads(input_file,
         " -l " + str(options.trim_adapter_min_length) +\
         " -q " + str(options.trim_adapter_trim_end_quality) +\
         " -t " + str(options.trim_adapter_nthreads) +\
-        " --quiet"
+        " --quiet" +\
+        " -1 > " + output_files[0]
 
     with logger_mutex:
         logger.debug(cmd)
@@ -638,7 +638,7 @@ def trim_adapter_SE_reads(input_file,
         job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=6G,virtual_free=6G" +\
+                            " -l h_vmem=3G,virtual_free=3G" +\
                             " -cwd"
 
         # ruffus.drmaa_wrapper.run_job
@@ -654,46 +654,21 @@ def trim_adapter_SE_reads(input_file,
     with logger_mutex:
         logger.debug(std_err_string)
 
-    # Move files to correct path
-    summaryFilename = re.sub(r'^(.+/)*(.+)\.fastq(\.gz)?$', r'\2-trimmed.log', input_file)
-    if not Path(summaryFilename).is_file():
-        summaryFilename = re.sub(r'^(.+/)*(.+)\.fastq(\.gz)?$', r'\2.fastq-trimmed.log', input_file)
+    trimmedFilename = output_files[0]
 
-    trimmedFilename = re.sub(r'^(.+/)*(.+)\.fastq(\.gz)?$', r'\2-trimmed.fastq', input_file)
-    if not Path(trimmedFilename).is_file():
-        trimmedFilename = re.sub(r'^(.+/)*(.+)\.fastq(\.gz)?$', r'\2.fastq-trimmed.fastq', input_file)
+    # Compute nb of valid reads and write in file
+    cmd = "wc -l < " + trimmedFilename
+    cmd_output = subprocess.check_output(cmd, shell=True)
+    cmd_output = cmd_output.decode().strip()
+    print(cmd_output)
+    nValidReads = int(cmd_output)
 
-    newSummaryFilename = str(task_path / re.sub(r'^(.+/)*(.+)\.fastq(\.gz)?$', r'\2.trimmed.log', input_file))
-    newTrimmedFilename = output_files[0]
-    with logger_mutex:
-        logger.debug("input_file " + input_file)
-        logger.debug("summaryFilename " + summaryFilename)
-        logger.debug("trimmedFilename " + trimmedFilename)
-        logger.debug("newSummaryFilename " + newSummaryFilename)
-        logger.debug("newTrimmedFilename " + newTrimmedFilename)
-    wait_for_file(summaryFilename, sleepTimeFilesystem)
-    wait_for_file(trimmedFilename, sleepTimeFilesystem)
-    shutil.move(summaryFilename, newSummaryFilename)
-    shutil.move(trimmedFilename, newTrimmedFilename)
-    summaryFilename = newSummaryFilename
-    trimmedFilename = newTrimmedFilename
-
-    # Extract nb of valid reads from the summary file and write to a small metadata file
-    wait_for_file(summaryFilename, sleepTimeFilesystem)
-    with open(summaryFilename,'r') as summaryFile:
-        nValidReads = -1
-        for line in summaryFile:
-            regex = re.search(r'^\s*([0-9.]+)\s+[0-9.()%]+\s+reads available; of these:', line)
-            if regex:
-                nValidReads = int(regex.group(1))
     metadata_filename = output_files[1]
     with open(metadata_filename,'w') as metadataFile:
         metadataFile.write(str(nValidReads) + '\n')
 
-    # Small analysis that will be run on the login node
-    plot_trimmed_reads_length_dist(summaryFilename)
-
     with logger_mutex:
+        logger.debug(cmd_output)
         logger.debug("Trimming of single-end reads finished.")
 
 
