@@ -1,7 +1,7 @@
 ---
 author: "Marc Weber"
 title: "RNA-seq pipeline roesti, tutorial"
-date: 2018.01.26
+date: 2018.05.11
 link-citations: "true"
 css: "/users/lserrano/mweber/Research_cloud/Python_mwTools/pandoc-notebook/CSS/pandoc.css"
 bibliography: "/users/lserrano/mweber/Research_cloud/Bibliography/library.bib"
@@ -63,9 +63,9 @@ Output files will be written in the current directory in the folder `pipeline_ro
 
 If no error appears, run the full pipeline,
 ```bash
-pipeline_roesti -i /users/lserrano/sequencing_data/example_path/sampleA*.fastq.gz /users/lserrano/sequencing_data/example_path/sampleB*.fastq.gz
+nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/sampleA*.fastq.gz /users/lserrano/sequencing_data/example_path/sampleB*.fastq.gz &> pipeline.out &
 ```
-Do not close the terminal window till the end. The pipeline may take between 2 and 5 hours to complete, computing all the samples in parallel.
+The pipeline may take between 2 and 5 hours to complete, computing all the samples in parallel.
 
 
 ### Input
@@ -78,9 +78,9 @@ By default, the pipeline chooses the reference genome of Mycoplasma pneumoniae M
 2. Use existing indexed reference genome and rRNA, genome, CDS files.
 
 
-#### Creating indexed reference genome from fasta/genbank files
+#### Creating indexed reference genome from fasta/genbank files \[recommended\]
 
-The genome can be indexed at the beginning of the pipeline run. Any collection of files in either genbank or fasta format (or a mix) can be used to define the set of reference DNA sequences for the alignment of the reads.
+The genome can be indexed at the beginning of the pipeline run. Any collection of files in either genbank or fasta format (or a mix) can be used to define the set of reference DNA sequences for the alignment of the reads. However, the expression values per gene will be only computed if you provide a genbank file with the annotations.
 
 + `--ref-genbank`       List of filenames for reference DNA sequences in Genbank format. Wildcards such as ? * and [] can be used. Annotations in genbank format will be used to create the CDS and rRNA BED files.
 + `--ref-fasta`         List of filenames for reference DNA sequences in fasta format. Wildcards such as ? * and [] can be used.
@@ -88,7 +88,7 @@ The genome can be indexed at the beginning of the pipeline run. Any collection o
 + `--ref-output-dir`    Directory of the indexed genome and BED files. By default, the indexed genome files will be written in the directory "./REF_OUTPUT_NAME".
 
 
-#### Using existing indexed reference genome (optional)
+#### Using existing indexed reference genome \[not recommended\]
 
 If a reference genome has already been indexed with `bowtie2-build`, we can set the path to the indexed genome files and BED files for the CDS:
 
@@ -114,7 +114,7 @@ The main output files in the case of RNA-seq analysis are located in the subfold
 
 + `sample1.CDS_fragment_count.bed` RNA fragment count for each CDS.
 + `sample1.CDS_average_coverage.bed` average per-base coverage for each CDS.
-+ `sample1.CDS_values.csv` all values for each CDS in a csv table. We compute twice all these values, filtering or not the rRNA reads.
++ `sample1.CDS_values.csv` all values for each CDS in a csv table (see description below). We compute twice all these values, filtering or not the rRNA reads.
     - fragment count
     - average coverage
     - RPKM
@@ -129,7 +129,7 @@ The main output files in the case of RNA-seq analysis are located in the subfold
 All these files are in [BED format](http://www.ensembl.org/info/website/upload/bed.html) and in CSV format.
 
 
-#### Interpretation of output
+#### Output description
 
 Both fragment counts and average per-base coverage can be interpreted as the level of mRNA molecules present in the sample. In theory, if fragment size distribution is the same for every transcript, the number of fragments should be perfectly proportional to the number of transcripts. However, this might not be true if fragments are smaller for a specific transcript, therefore artificially increasing the number of fragments for this transcript compared to the others. Averaging the per-base coverage eliminates the dependency on fragment size.
 
@@ -158,21 +158,21 @@ Transcripts per million (TPM) is a measurement of the proportion of transcripts 
 \text{TPM}_i = \frac{X_i}{l_i} \frac{1}{\sum_j \frac{X_i}{l_i} } 10^6
 \end{align}
 
+See also: [Paper: RPKM measure is inconsistent among samples - Next Genetics](http://blog.nextgenetics.net/?e=51)
 
 ### Run the computation on the cluster
 
 When running the pipeline by the command line, the ssh session in the terminal needs to remain open in order for the pipeline to run. In the case that the terminal windows gets closed or the connection to the cluster interrupted, the pipeline will stop. In you wish to keep the pipeline running on the cluster in these cases, you can detach the pipeline command from the current login session, usin the nohup command together with the ampersand symbol at the end of the command line. Example:
 ```bash
-nohup pipeline_roesti -i /pathto/ecoli_fastafiles/*.fastq.gz 1> roesti.out 2> roesti.err &
+nohup pipeline_roesti -i /pathto/ecoli_fastafiles/*.fastq.gz &> roesti.out &
 ```
 This way, the computation will run in the background and will not be killed when closing the terminal session or logging out. Information on the status of the computation can be found in the redirected output and error of the command.
 ```bash
 less roesti.out
-less roesti.err
 ```
 and also in the log file of the pipeline,
 ```bash
-less pipeline_roesti/pipeline_roesti.log
+less pipeline_roesti.log
 ```
 Current jobs that are running or pending can be listed with the `qstat` command.
 
@@ -209,7 +209,7 @@ Because the pipeline is using the [Ruffus](http://www.ruffus.org.uk/) framework,
 
 By default, the pipeline chooses the reference genome of Mycoplasma pneumoniae M129 (NC_000912.1) with the list of CDS updated from the last annotations table. We can run the analysis pipeline with no other options,
 ```bash
-nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz &
+nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz &> roesti.out &
 ```
 
 
@@ -219,12 +219,6 @@ In this case, we have to give as input the Genbank or fasta files for the refere
 ```bash
 /users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff
 ```
-This Genbank file was created from the following information sources:
-
-- annotation table from file "Table annotation_latest.xlsx", march 2016.
-- all variants as detected from sequenced genome  of 2009 of the lab strain of Mycoplasma pneumonia M129.
-- protein sequences and RefSeq accession number retrieved from NCBI Entrez RefSeq genome sequence and annotations (assembly GCF_000027345.1 and genome sequence RefSeq NC_000912.1).
-- essentiality study 2016 by Maria and Samuel with the Poisson method.
 
 In addition, we need the DNA sequence of the construct, which can be either in Genbank or fasta format. The DNA sequence files will be automatically parsed, indexed for the bowtie2 aligner and the list of CDS from Genbank annotations extracted. If the construct sequence is in Genbank format, we can list both files (whitespace separated) after the option `--ref-genbank`,
 ```bash
@@ -236,7 +230,7 @@ If the construct sequence is in fasta format, we use the option `--ref-fasta`,
 ```bash
 nohup pipeline_roesti -i /users/lserrano/sequencing_data/example_path/*.fastq.gz \
     --ref-genbank /users/lserrano/mweber/Research_cloud/Mycoplasma_pneumoniae_experimental_data/Annotation/NC_000912.1_updated_annotations.gbff \
-    --ref-fasta /pathto/construct_plasmid.fna &
+    --ref-fasta /pathto/construct_plasmid.fna &> roesti.out &
 ```
 
 
@@ -246,11 +240,11 @@ We give as input the fastq files and the reference genome in genbank format. The
 ```bash
 nohup pipeline_roesti -i /pathto/*.fastq* \
 	--ref-genbank /pathto/ecoli_K12_MG1655_NC_000913.3.gb \
-	--ref-fasta /pathto/plasmid1.fasta &
+	--ref-fasta /pathto/plasmid1.fasta &> roesti.out &
 ```
 
 
-### Examples of genome, CDS and rRNA BED files (optional)
+### Examples of genome, CDS and rRNA BED files \[not recommended\]
 
 The genome BED file is simply a list of all chromosomes and their length in number of bases. Example for E. coli:
 ```
@@ -292,7 +286,7 @@ NC_000913.3     2726280 2729184 rrlG    0       -
 ```
 
 
-### Example using existing indexed genome files (optional)
+### Example using existing indexed genome files \[not recommended\]
 
 As an example, files were prepared for aligning reads to the strain Escherichia coli K12_MG1655. The pipeline can be run by defining the path for all genome files corresponding to the organism. We included the command in a bash script for easier handling. The `--pipeline-name` option is used to create different output directories to differentiate the results for paired-end fastq files to the results for single-end fastq files when these are mixed in the same batch of samples.
 ```bash
@@ -309,7 +303,7 @@ nohup pipeline_roesti \
     --genome-CDS-bedfile "${GENOME_PATH}/${GENOME_NAME}_CDS.bed" \
     --seq-end paired-end \
     --library-type rna-seq \
-    1> roesti_PE.out 2> roesti_PE.err &
+    &> roesti.out &
 ```
 
 
@@ -324,6 +318,7 @@ nohup pipeline_roesti \
     + seaborn 0.7.1
 + DRMAA library
 + SeqPurge 0.1-478-g3c8651b (part of NGS-bits software suite)
++ skewer-0.2.2
 + Qt 5.5 for NGS-bits (maybe we could get rid of this dependency)
 + bowtie2 2.2.9
 + samtools 1.3.1
@@ -335,7 +330,7 @@ nohup pipeline_roesti \
 
 ### Jobs stuck waiting in the queue
 
-The alignment task uses by default 12 threads. When the cluster usage is very high, the alignement jobs can remain a long time waiting in queue. Try to re-launch the pipeline with a smaller amount of threads, for example `--nthreads 8`.
+The alignment task uses by default 12 threads. When the cluster usage is very high, the alignement jobs can remain a long time waiting in queue. Try to re-launch the pipeline with a smaller amount of threads, for example adding the option `--nthreads 8`.
 
 ### Syntax error
 
@@ -385,7 +380,7 @@ usage: pipeline_roesti [-h] [--verbose [VERBOSE]] [--version] [-L FILE]
                        [--genome-CDS-bedfile GENOMECDSBEDFILE]
                        [--nthreads NTHREADS] [--njobsmax NJOBS]
                        [--bash-profile BASH_PROFILE] [--analysisId ANALYSISID]
-                       [--sendMessageToWebServer]
+                       [--deleteIntermediateFiles] [--sendMessageToWebServer]
 
 pipeline_roesti Pipeline to analyze RNA-seq data from RNA-seq and Ribo-seq
 (ribosome profiling) experiments. Python 3.5 script. | Author: Marc Weber |
@@ -454,9 +449,9 @@ optional arguments:
                         smaller than the threshold. (default: 15)
   --indexed-ref-genome ALIGN_INDEXED_REF_GENOME_PATH
                         Path to the basename of the index for the reference
-                        genome built with bowtie2-build. (default: /users/lser
-                        rano/mweber/Ribosome_profiling_data/bowtie2_indexed_ge
-                        nome/Mpn/NC_000912)
+                        genome built with bowtie2-build. (default:
+                        /users/lserrano/mweber/RNA-
+                        seq_data/bowtie2_indexed_genome/Mpn/NC_000912)
   --rRNA-bedfile RRNA_BEDFILE
                         Path to the BED file of rRNA regions. Reads aligning
                         in the first rRNA region will be used to determine the
@@ -499,6 +494,7 @@ optional arguments:
                         Integer that identifies the overall pipeline run. It
                         is independent from the jobids of the job submissions
                         on the cluster grid engine. (default: None)
+  --deleteIntermediateFiles
   --sendMessageToWebServer
                         Send a message to the webserver dbspipe when the
                         pipeline has finished. Only for pipeline launched by
