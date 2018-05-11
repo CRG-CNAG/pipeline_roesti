@@ -110,6 +110,7 @@ parser.add_argument('--analysisId', default=None, type=int,
 parser.add_argument('--deleteIntermediateFiles', dest='delete_intermediate_files', action='store_true', default=False)
 parser.add_argument('--sendMessageToWebServer', action='store_true',
                     help="Send a message to the webserver dbspipe when the pipeline has finished. Only for pipeline launched by the web server application.")
+parser.add_argument('--host', dest='host', default='cluster', type=str)
 options = parser.parse_args()
 
 
@@ -192,9 +193,12 @@ if options.bash_profile == '':
         print("ERROR: bash profile could not be found.")
         raise SystemError
 loadDependenciesScriptPath = scriptPath / "load_dependencies.sh"
-cmd_source_bash_profile = ". {} && . {} && cd {} &&".format(options.bash_profile,
-                                                            str(loadDependenciesScriptPath),
-                                                            str(outputPath))
+if options.host == 'cluster':
+    cmd_source_bash_profile = ". {} && . {} && cd {} &&".format(options.bash_profile,
+                                                                str(loadDependenciesScriptPath),
+                                                                str(outputPath))
+else:
+    cmd_source_bash_profile = "cd {} &&".format(str(outputPath))
 
 # Global bowtie2 options
 options.phredEncoding = 'phred33'
