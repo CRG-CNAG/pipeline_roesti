@@ -171,7 +171,7 @@ wc -l < ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed > ${OUTPUT_PATH_LOCAL}/${SAM
 
 # Sort BED file
 # Sort is VERY SLOW FOR LARGE FILES. When we remove rRNA, the file /${SAMPLE}.filtered.bed is much reduced to ~40M,
-# so in this case sorting take litlle time.
+# so in this case sorting take little time.
 # We need to sort the BED file, otherwise bedtools intersect will use huge memory (70G) when computing the number of
 # reads per gene and is much slower.
 # We can use the optimized and parallel implementation of sort provided by GNU coreutils.
