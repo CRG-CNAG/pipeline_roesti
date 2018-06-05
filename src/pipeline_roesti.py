@@ -248,11 +248,13 @@ options.align_max_reported_alignments = 0    # set to 0 to deactivate the option
 if run_locally:
     options.samtools_sort_tmp_dir = '.'
 else:
-    options.samtools_sort_tmp_dir = '${TMPDIR}'
-options.samtools_sort_max_mem = 32000    # M
+    options.samtools_sort_tmp_dir = '$TMPDIR'
+options.samtools_sort_max_mem = 24000    # M
 options.samtools_sort_nthread = 4
 # Note: maximum memory per thread **has to be an integer**, otherwise it is interpreted as bytes
-options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 3000) / options.samtools_sort_nthread)
+# Note: we have to allocate some free memory for the main samtools thread, probably for the
+# file merging, otherwise the job will reach memory limit.
+options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 6000) / options.samtools_sort_nthread)
 
 ## filter_alignments
 # ...
@@ -915,7 +917,7 @@ def convert_sam_to_bam(sam_file,
     # if a float is passed, it seems that samtools takes the value as bytes and will create
     # hundred of thousands of temporary files, potentially collapsing the filesystem.
     cmd = cmd_source_bash_profile +\
-          "samtools view -b -h -u " + sam_file +\
+          " samtools view -b -h -u " + sam_file +\
           " | samtools sort -@ {:d} -m {:d}M -T {} -o {}".format(options.samtools_sort_nthread,
                                                                  options.samtools_sort_max_mem_per_thread,
                                                                  options.samtools_sort_tmp_dir,
