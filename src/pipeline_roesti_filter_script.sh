@@ -127,22 +127,22 @@ echo ${STRAND} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.F.strand
 
 
 if [[ "$SEQ_END" = "single-end" ]]; then
-    # Convert BAM file reads to BED format (single-end reads).
+# Convert BAM file reads to BED format (single-end reads).
     samtools view -h ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam \
     | samtools sort -n -l 0 \
     | bedtools bamtobed -i stdin > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.bed
 
 elif [[ "$SEQ_END" = "paired-end" ]]; then
-    # Convert BAM file reads to BEDPE format (BED format for paired end)
-    # BAM file has to be sorted by read *name* in order for bedtools to find read pairs (normal sorting is by chromosomal position)
-    # Then we cut the BEDPE format to form a simple BED format, keeping the start pos of read1 and end pos of read2.
-    # Note that bedtools converts forward reads to + strand and reverse reads to - strand.
-    # In paired-end reads, what determines the strand is the order of F1R2 or R1F2.
-    # We use the option for bamtobed: -mate1 When writing BEDPE (-bedpe) format, always report mate one as the first BEDPE “block”.
-    # This way, we will have in BEDPE file:
-    # column 9 = strand read 1, column 10 = strand read 2
-    # Note that in the BEDPE file, read 1 may have the start position after the read 2, we will have to parse
-    # the file to convert the start and end positions from BEDPE to BED.
+# Convert BAM file reads to BEDPE format (BED format for paired end)
+# BAM file has to be sorted by read *name* in order for bedtools to find read pairs (normal sorting is by chromosomal position)
+# Then we cut the BEDPE format to form a simple BED format, keeping the start pos of read1 and end pos of read2.
+# Note that bedtools converts forward reads to + strand and reverse reads to - strand.
+# In paired-end reads, what determines the strand is the order of F1R2 or R1F2.
+# We use the option for bamtobed: -mate1 When writing BEDPE (-bedpe) format, always report mate one as the first BEDPE “block”.
+# This way, we will have in BEDPE file:
+# column 9 = strand read 1, column 10 = strand read 2
+# Note that in the BEDPE file, read 1 may have the start position after the read 2, we will have to parse
+# the file to convert the start and end positions from BEDPE to BED.
     samtools view -h ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam \
     | samtools sort -n -l 0 \
     | bedtools bamtobed -i stdin -bedpe -mate1 \
