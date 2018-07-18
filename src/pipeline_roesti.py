@@ -1268,12 +1268,13 @@ def genome_coverage_fragment_count(reads_bed_file,
     #     logger.debug(task_name + ", filtered input file: " + reads_bed_file)
 
     nreads_filename = sample_name + '.filtered.bed.nreads'
-    nreads_filepath = Path(input_path) / nreads_bed_file
+    nreads_filepath = Path(input_path) / nreads_filename
     if nreads_filepath.is_file():
         with nreads_filepath.open() as f:
             nreads = int(next(f).split()[0])
     else:
         nreads = 10e6
+    print("sample", sample_name, "nreads", nreads)
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_genome_coverage.sh')
 
