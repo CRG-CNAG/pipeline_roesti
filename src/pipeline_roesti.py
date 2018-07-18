@@ -1137,11 +1137,6 @@ def extract_footprints(input_files,
     if re.match(r'^(.+/)*(.+)\.bed$', input_files[1]):
         reads_bed_file = input_files[1]
 
-    if re.match(r'^(.+/)*(.+)\.bed\.nreads$', input_files[0]):
-        nreads_bed_file = input_files[0]
-    if re.match(r'^(.+/)*(.+)\.bed\.nreads$', input_files[1]):
-        nreads_bed_file = input_files[1]
-
     filter_script_filename = str(scriptPath / 'pipeline_roesti_extract_footprints.sh')
 
     cmd = cmd_source_bash_profile +\
@@ -1272,6 +1267,13 @@ def genome_coverage_fragment_count(reads_bed_file,
     # with logger_mutex:
     #     logger.debug(task_name + ", filtered input file: " + reads_bed_file)
 
+    nreads_filename = sample_name + '.filtered.bed.nreads'
+    nreads_filepath = Path(input_path) / nreads_bed_file
+    if nreads_filepath.is_file():
+        with nreads_filepath.open() as f:
+            nreads = int(next(f).split()[0])
+    else:
+        nreads = 10e6
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_genome_coverage.sh')
 
@@ -1294,10 +1296,16 @@ def genome_coverage_fragment_count(reads_bed_file,
             job_queue_name = short_queue
         else:
             job_queue_name = long_queue
+        # Large number of reads might require a fairly large memory for the bedtools intersect,
+        # even if the reads are sorted. Last example case was 55M reads and required 16G of memory.
+        if nreads > 30e6:
+            memory = '24G'
+        else:
+            memory = '16G'
         job_other_options = " -pe smp " + str(1) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=16G,virtual_free=16G"
+                            " -l virtual_free={}".format(memory)
 
         # ruffus.drmaa_wrapper.run_job
         stdout_res, stderr_res = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
