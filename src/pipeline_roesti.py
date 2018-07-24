@@ -81,6 +81,8 @@ parser.add_argument('--adapter-seq-fw', dest='trim_adapter_seq_forward', default
                     help='Adapter sequence forward. Default will be set to TruSeq Universal Adapter 5’ AGATCGGAAGAGCACACGTCT')
 parser.add_argument('--adapter-seq-rv', dest='trim_adapter_seq_reverse', default='',
                     help='Adapter sequence reverse. Default will be set to TruSeq Universal Adapter 5’ AGATCGGAAGAGCACACGTCT for rna-seq library, and to Illumina RNA PCR Primer GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTA for ribo-seq library.')
+parser.add_argument('--no-trimming', dest='no_trimming', action='store_true',
+                    help='Do not trim reads before alignment. By default bad quality bases are trimmmed from read ends.')
 parser.add_argument('--remove-rRNA', dest='remove_rRNA', action='store_true',
                     help='Remove reads that align to the rRNA.')
 parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=15, type=int,
@@ -207,6 +209,7 @@ if run_locally:
     options.njobs = 1
 
 ## trim adapter
+options.no_trimming
 options.trim_adapter_min_length = 12
 options.trim_adapter_trim_end_quality = 10
 options.trim_adapter_nthreads = min(4, options.nThreads)
@@ -488,79 +491,101 @@ def trim_adapter_PE_reads(input_files,
     if len(input_files) != 2:
         raise Exception("One of read pairs %s missing" % (input_files,))
 
-    nReadsApprox = max([estimateNbLines(input_file, 100*1024*1024) / 4. for input_file in input_files])
-    # Approximate computation time in seconds per reads per thread measured for test run
-    comp_time = (nReadsApprox*(((2*60+59)*16)/12.5e6))/options.trim_adapter_nthreads
-    with logger_mutex:
-        logger.debug("trim_adapter_PE_reads, nReadsApprox " + str(nReadsApprox))
-        logger.debug("trim_adapter_PE_reads, comp_time " + str(comp_time))
+    if options.no_trimming:
+        with logger_mutex:
+            logger.debug("Input files:")
+            logger.debug(input_files[0])
+            logger.debug(input_files[1])
 
-    summaryFilename = re.search(r'(.+)\.fastq.*', output_paired_files[0]).group(1) + ".summary"
+        # Create symbolic links to the original read files
+        Path(output_paired_files[0]).symlink_to(Path(input_files[0]).resolve())
+        Path(output_paired_files[1]).symlink_to(Path(input_files[1]).resolve())
 
-    # seqPurge_path = "/users/lserrano/mweber/Software/SeqPurge/ngs-bits/bin/"
-    cmd = cmd_source_bash_profile +\
-          " SeqPurge " +\
-          " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +\
-          " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +\
-          " -a1 " + options.trim_adapter_seq_forward + " -a2 " + options.trim_adapter_seq_reverse + " " +\
-          " -min_len " + str(options.trim_adapter_min_length) +\
-          " -threads " + str(options.trim_adapter_nthreads) +\
-          " -summary " + summaryFilename
-    with logger_mutex:
-        logger.debug(cmd)
-        logger.debug("estimated computation time " + str(datetime.timedelta(seconds=comp_time)))
+        # Compute nb of valid reads and write in file
+        cmd = "wc -l < " + output_paired_files[0]
+        cmd_output = subprocess.check_output(cmd, shell=True)
+        cmd_output = cmd_output.decode().strip()
+        print(cmd_output)
+        nValidReads = int(cmd_output)
 
-    try:
-        stdout_res, stderr_res = "",""
-        walltime = datetime.timedelta(seconds=max(4*comp_time, 1*60*60))
-        if walltime < datetime.timedelta(hours=6):
-            job_queue_name = short_queue
-        else:
-            job_queue_name = long_queue
-        job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
-                            " -q " + job_queue_name +\
-                            " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=3G,virtual_free=3G" +\
-                            " -cwd"
+        metadata_filename = output_paired_files[2]
+        with open(metadata_filename,'w') as metadata_file:
+            metadata_file.write(str(nValidReads) + '\n')
 
-        # ruffus.drmaa_wrapper.run_job
-        stdout_res, stderr_res  = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
-                                          drmaa_session=drmaa_session, run_locally=run_locally,
-                                          job_other_options=job_other_options, retain_job_scripts=False)
+    else:
 
-    # relay all the stdout, stderr, drmaa output to diagnose failures
-    except error_drmaa_job as err:
-        raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
+        nReadsApprox = max([estimateNbLines(input_file, 100*1024*1024) / 4. for input_file in input_files])
+        # Approximate computation time in seconds per reads per thread measured for test run
+        comp_time = (nReadsApprox*(((2*60+59)*16)/12.5e6))/options.trim_adapter_nthreads
+        with logger_mutex:
+            logger.debug("trim_adapter_PE_reads, nReadsApprox " + str(nReadsApprox))
+            logger.debug("trim_adapter_PE_reads, comp_time " + str(comp_time))
 
-    std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
-    with logger_mutex:
-        logger.debug(std_err_string)
+        summaryFilename = re.search(r'(.+)\.fastq.*', output_paired_files[0]).group(1) + ".summary"
 
-    wait_for_file(summaryFilename, sleepTimeFilesystem)
+        cmd = cmd_source_bash_profile +\
+              " SeqPurge " +\
+              " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +\
+              " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +\
+              " -a1 " + options.trim_adapter_seq_forward + " -a2 " + options.trim_adapter_seq_reverse + " " +\
+              " -min_len " + str(options.trim_adapter_min_length) +\
+              " -threads " + str(options.trim_adapter_nthreads) +\
+              " -summary " + summaryFilename
+        with logger_mutex:
+            logger.debug(cmd)
+            logger.debug("estimated computation time " + str(datetime.timedelta(seconds=comp_time)))
 
-    # Extract nb of valid reads from the summary file and write to a small metadata file
-    with open(summaryFilename,'r') as summary_file:
-        nValidReads = None
-        nRemovedReads = None
-        nRawReads = None
-        for line in summary_file:
-            regex = re.search(r'Reads \(forward \+ reverse\): ([0-9]+).*', line)
-            if regex:
-                nRawReads = int(regex.group(1))
-                print('nRawReads', nRawReads)
-            regex = re.search(r'Removed reads: ([0-9]+) of .*', line)
-            if regex:
-                nRemovedReads = int(regex.group(1))
-                print('nRemovedReads', nRemovedReads)
-        if nRawReads is not None and nRemovedReads is not None:
-            nValidReads = nRawReads - nRemovedReads
+        try:
+            stdout_res, stderr_res = "",""
+            walltime = datetime.timedelta(seconds=max(4*comp_time, 1*60*60))
+            if walltime < datetime.timedelta(hours=6):
+                job_queue_name = short_queue
+            else:
+                job_queue_name = long_queue
+            job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
+                                " -q " + job_queue_name +\
+                                " -l h_rt=" + printTimeDelta(walltime) +\
+                                " -l h_vmem=3G,virtual_free=3G" +\
+                                " -cwd"
 
-    metadata_filename = output_paired_files[2]
-    with open(metadata_filename,'w') as metadata_file:
-        metadata_file.write(str(nValidReads) + '\n')
+            # ruffus.drmaa_wrapper.run_job
+            stdout_res, stderr_res  = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
+                                              drmaa_session=drmaa_session, run_locally=run_locally,
+                                              job_other_options=job_other_options, retain_job_scripts=False)
 
-    # Small analysis that will be run on the login node
-    plot_trimmed_reads_length_dist(summaryFilename)
+        # relay all the stdout, stderr, drmaa output to diagnose failures
+        except error_drmaa_job as err:
+            raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
+
+        std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
+        with logger_mutex:
+            logger.debug(std_err_string)
+
+        wait_for_file(summaryFilename, sleepTimeFilesystem)
+
+        # Extract nb of valid reads from the summary file and write to a small metadata file
+        with open(summaryFilename,'r') as summary_file:
+            nValidReads = None
+            nRemovedReads = None
+            nRawReads = None
+            for line in summary_file:
+                regex = re.search(r'Reads \(forward \+ reverse\): ([0-9]+).*', line)
+                if regex:
+                    nRawReads = int(regex.group(1))
+                    print('nRawReads', nRawReads)
+                regex = re.search(r'Removed reads: ([0-9]+) of .*', line)
+                if regex:
+                    nRemovedReads = int(regex.group(1))
+                    print('nRemovedReads', nRemovedReads)
+            if nRawReads is not None and nRemovedReads is not None:
+                nValidReads = nRawReads - nRemovedReads
+
+        metadata_filename = output_paired_files[2]
+        with open(metadata_filename,'w') as metadata_file:
+            metadata_file.write(str(nValidReads) + '\n')
+
+        # Small analysis that will be run on the login node
+        plot_trimmed_reads_length_dist(summaryFilename)
 
     with logger_mutex:
         logger.debug("Trimming of pair-end reads finished.")
@@ -616,62 +641,84 @@ def trim_adapter_SE_reads(input_file,
     if type(input_file) is not str:
         raise Exception("Input file should be unique, input_file: %s" % (input_file,))
 
-    nReadsApprox = estimateNbLines(input_file, 100*1024*1024) / 4.
-    # Approximate computation time in seconds per reads per thread measured for test run
-    comp_time = (nReadsApprox * (((2*60) * 1) / 5e4)) / options.trim_adapter_nthreads
+    if options.no_trimming:
+        with logger_mutex:
+            logger.debug("Input files:")
+            logger.debug(input_file)
 
-    cmd = cmd_source_bash_profile +\
-        " skewer-0.2.2-linux-x86_64 " +\
-        " " + input_file +\
-        " -x " + options.trim_adapter_seq_forward +\
-        " -l " + str(options.trim_adapter_min_length) +\
-        " -q " + str(options.trim_adapter_trim_end_quality) +\
-        " -t " + str(options.trim_adapter_nthreads) +\
-        " --quiet" +\
-        " -1 > " + output_files[0]
+        # Create symbolic links to the original read files
+        Path(output_files[0]).symlink_to(Path(input_file).resolve())
 
-    with logger_mutex:
-        logger.debug(cmd)
-        logger.debug("estimated computation time " + str(datetime.timedelta(seconds=comp_time)))
+        # Compute nb of valid reads and write in file
+        cmd = "wc -l < " + output_files[0]
+        cmd_output = subprocess.check_output(cmd, shell=True)
+        cmd_output = cmd_output.decode().strip()
+        print(cmd_output)
+        nValidReads = int(cmd_output)
 
-    try:
-        stdout_res, stderr_res = "",""
-        walltime = datetime.timedelta(seconds=max(4*comp_time, 1*60*60))
-        if walltime < datetime.timedelta(hours=6):
-            job_queue_name = short_queue
-        else:
-            job_queue_name = long_queue
-        job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
-                            " -q " + job_queue_name +\
-                            " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=3G,virtual_free=3G" +\
-                            " -cwd"
+        metadata_filename = output_files[1]
+        with open(metadata_filename,'w') as metadata_file:
+            metadata_file.write(str(nValidReads) + '\n')
 
-        # ruffus.drmaa_wrapper.run_job
-        stdout_res, stderr_res  = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
-                                          drmaa_session=drmaa_session, run_locally=run_locally,
-                                          job_other_options=job_other_options, retain_job_scripts=False)
+    else:
 
-    # relay all the stdout, stderr, drmaa output to diagnose failures
-    except error_drmaa_job as err:
-        raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
-    std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
-    with logger_mutex:
-        logger.debug(std_err_string)
+        nReadsApprox = estimateNbLines(input_file, 100*1024*1024) / 4.
+        # Approximate computation time in seconds per reads per thread measured for test run
+        comp_time = (nReadsApprox * (((2*60) * 1) / 5e4)) / options.trim_adapter_nthreads
 
-    trimmedFilename = output_files[0]
+        cmd = cmd_source_bash_profile +\
+            " skewer-0.2.2-linux-x86_64 " +\
+            " " + input_file +\
+            " -x " + options.trim_adapter_seq_forward +\
+            " -l " + str(options.trim_adapter_min_length) +\
+            " -q " + str(options.trim_adapter_trim_end_quality) +\
+            " -t " + str(options.trim_adapter_nthreads) +\
+            " --quiet" +\
+            " -1 > " + output_files[0]
 
-    # Compute nb of valid reads and write in file
-    cmd = "wc -l < " + trimmedFilename
-    cmd_output = subprocess.check_output(cmd, shell=True)
-    cmd_output = cmd_output.decode().strip()
-    print(cmd_output)
-    nValidReads = int(cmd_output)
+        with logger_mutex:
+            logger.debug(cmd)
+            logger.debug("estimated computation time " + str(datetime.timedelta(seconds=comp_time)))
 
-    metadata_filename = output_files[1]
-    with open(metadata_filename,'w') as metadataFile:
-        metadataFile.write(str(nValidReads) + '\n')
+        try:
+            stdout_res, stderr_res = "",""
+            walltime = datetime.timedelta(seconds=max(4*comp_time, 1*60*60))
+            if walltime < datetime.timedelta(hours=6):
+                job_queue_name = short_queue
+            else:
+                job_queue_name = long_queue
+            job_other_options = " -pe smp " + str(options.trim_adapter_nthreads) +\
+                                " -q " + job_queue_name +\
+                                " -l h_rt=" + printTimeDelta(walltime) +\
+                                " -l h_vmem=3G,virtual_free=3G" +\
+                                " -cwd"
+
+            # ruffus.drmaa_wrapper.run_job
+            stdout_res, stderr_res  = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
+                                              drmaa_session=drmaa_session, run_locally=run_locally,
+                                              job_other_options=job_other_options, retain_job_scripts=False)
+
+        # relay all the stdout, stderr, drmaa output to diagnose failures
+        except error_drmaa_job as err:
+            raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
+
+        std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
+        with logger_mutex:
+            logger.debug(std_err_string)
+
+        trimmedFilename = output_files[0]
+
+        # Compute nb of valid reads and write in file
+        cmd = "wc -l < " + trimmedFilename
+        cmd_output = subprocess.check_output(cmd, shell=True)
+        cmd_output = cmd_output.decode().strip()
+        print(cmd_output)
+        nValidReads = int(cmd_output)
+
+        metadata_filename = output_files[1]
+        with open(metadata_filename,'w') as metadataFile:
+            metadataFile.write(str(nValidReads) + '\n')
 
     with logger_mutex:
         logger.debug(cmd_output)
@@ -1026,7 +1073,7 @@ def filter_alignments(sorted_bam_file,
         job_other_options = " -pe smp " + str(8) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l h_vmem=16G,virtual_free=16G"
+                            " -l h_vmem=24G,virtual_free=24G"
 
         # ruffus.drmaa_wrapper.run_job
         stdout_res, stderr_res = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
