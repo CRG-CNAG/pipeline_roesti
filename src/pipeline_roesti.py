@@ -107,8 +107,8 @@ parser.add_argument('--njobsmax', dest='njobs', default=200, type=int,
                     help='Number of concurrent jobs to launch on the cluster (each job will use nThreads nodes in shared memory).')
 parser.add_argument('--bash-profile', dest='bash_profile', default='',
                     help='Bash profile is executed before each job on the cluster in order to load the dependencies. By default bash profile path is automatically detected in user\'s home directory, this option sets the path manually.')
-parser.add_argument('--analysisId', default=None, type=int,
-                    help="Integer that identifies the overall pipeline run. It is independent from the jobids of the job submissions on the cluster grid engine.")
+parser.add_argument('--analysisId', default=None, type=str,
+                    help="String that identifies the overall pipeline run. It is independent from the jobids of the job submissions on the cluster grid engine.")
 parser.add_argument('--deleteIntermediateFiles', dest='delete_intermediate_files', action='store_true', default=False)
 parser.add_argument('--sendMessageToWebServer', action='store_true',
                     help="Send a message to the webserver dbspipe when the pipeline has finished. Only for pipeline launched by the web server application.")
