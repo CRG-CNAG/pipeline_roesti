@@ -22,14 +22,13 @@ from itertools import islice
 import datetime
 import subprocess
 import shlex
-import websocket
 import pandas as pd
 import json
+from socketIO_client import SocketIO, LoggingNamespace
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
 from mwTools.general import glob_file_list
 from mwTools.general import open_by_suffix
-
 
 # --------------------------------------------------
 
@@ -1436,10 +1435,10 @@ def write_jobid_files():
             df = pd.read_table(str(file))
             nReads = df.iloc[:, 2].sum()
             if nReads < 1:
-                status = 0
+                status = -1
                 comments = comments + 'strand {} coverage file sums up 0 reads.\n'.format(strand)
         else:
-            status = 0
+            status = -1
             comments = comments + 'strand {} coverage file not found.\n'.format(strand)
 
     # We also test that the CDS_values file exists, though we do not consider
@@ -1456,12 +1455,13 @@ def write_jobid_files():
     #     f.write('')
 
     if options.sendMessageToWebServer:
-        # Send message using web socket to the web server DBSpipes
-        ws = websocket.create_connection("ws://dbspipes.crg.es:9000")
-        # We send the analysisId
-        jsonData = {'action':10070, 'jsonData':{'analysisId':options.analysisId, 'status':status, 'comments':comments}}
-        print("Sending message to web server via websocket:", json.dumps(jsonData))
-        ws.send(json.dumps(jsonData))
+        with SocketIO('dbspipes.crg.es', 9000, LoggingNamespace) as socketIO:
+            # Send message using web socket to the web server DBSpipes
+            print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, options.status))
+            data = {"internal_id": options.analysisId, "status": status}
+            socketIO.emit('on_finish', json.dumps(data))
+            # Listen
+            socketIO.wait(seconds=1)​
 
 
 
