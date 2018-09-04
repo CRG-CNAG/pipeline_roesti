@@ -1455,14 +1455,14 @@ def write_jobid_files():
     #     f.write('')
 
     if options.sendMessageToWebServer:
+        print("Trying to connect by web socket...")
         with SocketIO('dbspipes.crg.es', 9000, LoggingNamespace) as socketIO:
             # Send message using web socket to the web server DBSpipes
-            print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, options.status))
+            print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
             data = {"internal_id": options.analysisId, "status": status}
             socketIO.emit('on_finish', json.dumps(data))
             # Listen
-            socketIO.wait(seconds=1)​
-
+            socketIO.wait(seconds=1)
 
 
 #############################################################################
