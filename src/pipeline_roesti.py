@@ -132,7 +132,7 @@ run_locally = options.run_locally
 # Glob fastq files following list of patterns
 fastqFiles = [fn for pattern in options.input_fastq_files for fn in glob(pattern) if Path(fn).is_file()]
 if len(fastqFiles) == 0:
-    print("ERROR: no input file exists with path(s)", options.input_fastq_files)
+    raise ValueError("ERROR: no input file exists with path(s) {}".format(options.input_fastq_files))
     raise SystemExit
 # Remove duplicated files from list (can happen if multiple patterns match same files)
 fastqFiles = sorted(list(set(fastqFiles)))
@@ -289,6 +289,8 @@ if writeTestFiles:
     elif options.seq_end == 'paired-end':
         fastqFilesPE = group_paired_end_fastq_files(fastqFiles)
         print("fastqFilesPE", fastqFilesPE)
+        if len(fastqFilesPE) == 0:
+            raise ValueError("No fastq file pair has been found within the list of input files. Check that the filenames are identical for read1 and read2.")
         exampleFiles = fastqFilesPE[0]
     
     for i, fastqFilename in enumerate(exampleFiles):
@@ -396,6 +398,17 @@ iTask = 0
 
 #############################################################################
 
+if options.sendMessageToWebServer:
+    with SocketIO('dbspipes.crg.es', 9000, LoggingNamespace) as socketIO:
+        # Send message using web socket to the web server DBSpipes
+        status = 1
+        print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
+        data = {"internal_id": options.analysisId, "status": status}
+        socketIO.emit('on_update', json.dumps(data))
+        # Listen
+        socketIO.wait(seconds=1)
+
+#############################################################################
 
 infoStr = "\n\n#############################\n"
 infoStr += """
@@ -1420,7 +1433,7 @@ def write_jobid_files():
     # task_path is the last task's output directory
     fileList0 = [f for f in Path(task_path).iterdir() if f.is_file()]
     comments = ''
-    status = 1
+    status = 2
 
     # We just check that the coverage file for plus and minus strands exist
     # and sum up at least one read.
@@ -1447,7 +1460,7 @@ def write_jobid_files():
     regex = re.compile(r'^(.+/)*(?P<SAMPLENAME>.+)\.CDS_values\.csv$')
     fileList = [f for f in fileList0 if regex.search(f.name)]
     if len(fileList) == 0:
-        status = 1
+        status = 2
         comments = comments + 'CDS_values.csv file not found.\n'
 
     # filename = 'pipeline_done.{:d}.txt'.format(options.jobid)
@@ -1460,7 +1473,7 @@ def write_jobid_files():
             # Send message using web socket to the web server DBSpipes
             print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
             data = {"internal_id": options.analysisId, "status": status}
-            socketIO.emit('on_finish', json.dumps(data))
+            socketIO.emit('on_update', json.dumps(data))
             # Listen
             socketIO.wait(seconds=1)
 
