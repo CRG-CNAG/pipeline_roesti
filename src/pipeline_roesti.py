@@ -398,15 +398,9 @@ iTask = 0
 
 #############################################################################
 
-if options.sendMessageToWebServer:
-    with SocketIO('dbspipes.crg.es', 9000, LoggingNamespace) as socketIO:
-        # Send message using web socket to the web server DBSpipes
-        status = 1
-        print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
-        data = {"internal_id": options.analysisId, "status": status}
-        socketIO.emit('on_update', json.dumps(data))
-        # Listen
-        socketIO.wait(seconds=1)
+cmdSendSocketMessage = '{} --analysisId {} {}'.format(str(scriptPath / 'send_socket_message.py'),
+                                                      options.analysisId,
+                                                      '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
 
 #############################################################################
 
@@ -535,14 +529,16 @@ def trim_adapter_PE_reads(input_files,
 
         summaryFilename = re.search(r'(.+)\.fastq.*', output_paired_files[0]).group(1) + ".summary"
 
-        cmd = cmd_source_bash_profile +\
-              " SeqPurge " +\
-              " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +\
-              " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +\
-              " -a1 " + options.trim_adapter_seq_forward + " -a2 " + options.trim_adapter_seq_reverse + " " +\
-              " -min_len " + str(options.trim_adapter_min_length) +\
-              " -threads " + str(options.trim_adapter_nthreads) +\
-              " -summary " + summaryFilename
+        # We send the message to the web server from the first node of computation when the job has started.
+        cmd = (cmd_source_bash_profile +
+               cmdSendSocketMessage + " && " +
+               " SeqPurge " +
+               " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +
+               " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +
+               " -a1 " + options.trim_adapter_seq_forward + " -a2 " + options.trim_adapter_seq_reverse + " " +
+               " -min_len " + str(options.trim_adapter_min_length) +
+               " -threads " + str(options.trim_adapter_nthreads) +
+               " -summary " + summaryFilename)
         with logger_mutex:
             logger.debug(cmd)
             logger.debug("estimated computation time " + str(datetime.timedelta(seconds=comp_time)))
@@ -679,15 +675,17 @@ def trim_adapter_SE_reads(input_file,
         # Approximate computation time in seconds per reads per thread measured for test run
         comp_time = (nReadsApprox * (((2*60) * 1) / 5e4)) / options.trim_adapter_nthreads
 
-        cmd = cmd_source_bash_profile +\
-            " skewer-0.2.2-linux-x86_64 " +\
-            " " + input_file +\
-            " -x " + options.trim_adapter_seq_forward +\
-            " -l " + str(options.trim_adapter_min_length) +\
-            " -q " + str(options.trim_adapter_trim_end_quality) +\
-            " -t " + str(options.trim_adapter_nthreads) +\
-            " --quiet" +\
-            " -1 > " + output_files[0]
+        # We send the message to the web server from the first node of computation when the job has started.
+        cmd = (cmd_source_bash_profile +
+               cmdSendSocketMessage + " && " +
+               " skewer-0.2.2-linux-x86_64 " +
+               " " + input_file +
+               " -x " + options.trim_adapter_seq_forward +
+               " -l " + str(options.trim_adapter_min_length) +
+               " -q " + str(options.trim_adapter_trim_end_quality) +
+               " -t " + str(options.trim_adapter_nthreads) +
+               " --quiet" +
+               " -1 > " + output_files[0])
 
         with logger_mutex:
             logger.debug(cmd)
@@ -1469,7 +1467,7 @@ def write_jobid_files():
 
     if options.sendMessageToWebServer:
         print("Trying to connect by web socket...")
-        with SocketIO('dbspipes.crg.es', 9000, LoggingNamespace) as socketIO:
+        with SocketIO('dbspipes.crg.es', 50001, LoggingNamespace) as socketIO:
             # Send message using web socket to the web server DBSpipes
             print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
             data = {"internal_id": options.analysisId, "status": status}
