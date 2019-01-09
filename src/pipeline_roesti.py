@@ -464,7 +464,7 @@ infoStr += "a2 " + options.trim_adapter_seq_reverse + "\n\n"
 infoStr += "-threads " + str(options.nThreads) + "\n\n"
 pipelineDoc += infoStr
 
-
+print("... last command before first task ...")
 
 taskPathList = []
 iTask += 1

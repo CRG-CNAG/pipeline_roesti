@@ -76,7 +76,7 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
                 # Convert genbank annotations to BED file
                 annotDf = convert_genbank_to_annotation_df(genomeBio, verbose=1)
                 annotDfList.append(annotDf)
-                print("annotDf:\n", annotDf.head())
+                print("annotDf:\n", annotDf.head(20))
 
 
     # Parse fasta files
