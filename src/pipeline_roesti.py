@@ -284,7 +284,7 @@ for key, value in vars(options).items():
 writeTestFiles = options.run_test
 # takes 25k first reads in the first pair of fastq files
 if writeTestFiles:
-    nReads = int(25e3)
+    nReads = int(50e3)
     if options.seq_end == 'single-end':
         exampleFiles = [fastqFiles[0]]
     elif options.seq_end == 'paired-end':
@@ -464,8 +464,6 @@ infoStr += "-a2 <string>        Reverse adapter sequence (at least 15 bases). De
 infoStr += "a2 " + options.trim_adapter_seq_reverse + "\n\n"
 infoStr += "-threads " + str(options.nThreads) + "\n\n"
 pipelineDoc += infoStr
-
-print("... last command before first task ...")
 
 taskPathList = []
 iTask += 1
@@ -987,6 +985,8 @@ def convert_sam_to_bam(sam_file,
                                                                  options.samtools_sort_tmp_dir,
                                                                  sorted_bam_file) +\
           " && samtools index " + sorted_bam_file
+    with logger_mutex:
+        logger.debug(cmd)
 
     try:
         stdout_res, stderr_res = "",""
@@ -1081,6 +1081,8 @@ def filter_alignments(sorted_bam_file,
           " " + str(scriptPath) +\
           " " + ("true" if options.remove_rRNA else "false") +\
           " " + options.seq_end
+    with logger_mutex:
+        logger.debug(cmd)
 
     try:
         stdout_res, stderr_res = "",""
@@ -1215,6 +1217,8 @@ def extract_footprints(input_files,
           " false" +\
           " " + str(scriptPath) +\
           " " + str(options.genomeBedFile)
+    with logger_mutex:
+        logger.debug(cmd)
 
     try:
         stdout_res, stderr_res = "",""
@@ -1359,6 +1363,8 @@ def genome_coverage_fragment_count(reads_bed_file,
           " " + str(options.genomeBedFile) +\
           " " + str(options.genomeCDSBedFile) +\
           " " + str(options.rRNA_bedfile)
+    with logger_mutex:
+        logger.debug(cmd)
 
     try:
         stdout_res, stderr_res = "",""

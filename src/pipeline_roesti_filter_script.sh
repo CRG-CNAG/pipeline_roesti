@@ -64,64 +64,73 @@ samtools index ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam
 
 # Extract first rrna region from BED file
 read REF_GENOME RRNA1_START RRNA1_END RRNA1_STRAND <<< "$(awk '(NR==1) {print $1, $2, $3, $6}' ${RRNA_BEDFILE})"
+echo $RRNA1_START
+echo $RRNA1_END
+if [[ "$RRNA1_START" != "" ]]; then
 
-# counting reads in the first rRNA region, reads 1 forward
-if [[ "$SEQ_END" = "single-end" ]]; then
-    # -c             only count reads
-    # -F 16          keep only reads that are NOT reverse complemented
-    FILTER_FLAGS="-c -F 16"
-elif [[ "$SEQ_END" = "paired-end" ]]; then
-    # -c             only count reads
-    # -F 16          keep only reads that are NOT reverse complemented
-    # -f 64          keep only read 1 in read pair
-    FILTER_FLAGS="-c -F 16 -f 64"
-fi
-samtools view ${FILTER_FLAGS} ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam ${REF_GENOME}:${RRNA1_START}-${RRNA1_END} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_F
-
-# counting reads in the first rRNA region, reads 1 reverse
-if [[ "$SEQ_END" = "single-end" ]]; then
-    # -c             only count reads
-    # -f 16          keep only reads that are reverse complemented
-    FILTER_FLAGS="-c -f 16"
-elif [[ "$SEQ_END" = "paired-end" ]]; then
-    # -c             only count reads
-    # -f 16          keep only reads that are reverse complemented
-    # -f 64          keep only read 1 in read pair
-    FILTER_FLAGS="-c -f 16 -f 64"
-fi
-samtools view ${FILTER_FLAGS} ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam ${REF_GENOME}:${RRNA1_START}-${RRNA1_END} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_R
-
-# Import read counts and compare them
-typeset -i nreads_rRNA1_F=$(cat ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_F)
-typeset -i nreads_rRNA1_R=$(cat ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_R)
-STRAND=0
-if [[ "$RRNA1_STRAND" = "+" ]]; then
-    if [ $nreads_rRNA1_F -ge $nreads_rRNA1_R ]
-    then
-        # Note: we also include here the case where the nb of reads are equal
-        echo "sample: ${SAMPLE}  F1R2 is strand +, R1F2 is strand -"
-        STRAND=+1
-        STRAND_COLUMN=9
-    elif [ $nreads_rRNA1_F -lt $nreads_rRNA1_R ]
-    then
-        echo "sample: ${SAMPLE}  R1F2 is strand +, F1R2 is strand -"
-        STRAND=-1
-        STRAND_COLUMN=10
+    # counting reads in the first rRNA region, reads 1 forward
+    if [[ "$SEQ_END" = "single-end" ]]; then
+        # -c             only count reads
+        # -F 16          keep only reads that are NOT reverse complemented
+        FILTER_FLAGS="-c -F 16"
+    elif [[ "$SEQ_END" = "paired-end" ]]; then
+        # -c             only count reads
+        # -F 16          keep only reads that are NOT reverse complemented
+        # -f 64          keep only read 1 in read pair
+        FILTER_FLAGS="-c -F 16 -f 64"
     fi
-elif [[ "$RRNA1_STRAND" = "-" ]]; then
-    if [ $nreads_rRNA1_F -ge $nreads_rRNA1_R ]
-    then
-        # Note: we also include here the case where the nb of reads are equal
-        echo "sample: ${SAMPLE}  F1R2 is strand -, R1F2 is strand +"
-        STRAND=-1
-        STRAND_COLUMN=10
-    elif [ $nreads_rRNA1_F -lt $nreads_rRNA1_R ]
-    then
-        echo "sample: ${SAMPLE}  R1F2 is strand -, F1R2 is strand +"
-        STRAND=+1
-        STRAND_COLUMN=9
+    samtools view ${FILTER_FLAGS} ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam ${REF_GENOME}:${RRNA1_START}-${RRNA1_END} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_F
+
+    # counting reads in the first rRNA region, reads 1 reverse
+    if [[ "$SEQ_END" = "single-end" ]]; then
+        # -c             only count reads
+        # -f 16          keep only reads that are reverse complemented
+        FILTER_FLAGS="-c -f 16"
+    elif [[ "$SEQ_END" = "paired-end" ]]; then
+        # -c             only count reads
+        # -f 16          keep only reads that are reverse complemented
+        # -f 64          keep only read 1 in read pair
+        FILTER_FLAGS="-c -f 16 -f 64"
+    fi
+    samtools view ${FILTER_FLAGS} ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bam ${REF_GENOME}:${RRNA1_START}-${RRNA1_END} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_R
+
+    # Import read counts and compare them
+    typeset -i nreads_rRNA1_F=$(cat ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_F)
+    typeset -i nreads_rRNA1_R=$(cat ${OUTPUT_PATH_LOCAL}/${SAMPLE}.nreads_rRNA1_R)
+    STRAND=0
+    if [[ "$RRNA1_STRAND" = "+" ]]; then
+        if [ $nreads_rRNA1_F -ge $nreads_rRNA1_R ]
+        then
+            # Note: we also include here the case where the nb of reads are equal
+            echo "sample: ${SAMPLE}  F1R2 is strand +, R1F2 is strand -"
+            STRAND=+1
+            STRAND_COLUMN=9
+        elif [ $nreads_rRNA1_F -lt $nreads_rRNA1_R ]
+        then
+            echo "sample: ${SAMPLE}  R1F2 is strand +, F1R2 is strand -"
+            STRAND=-1
+            STRAND_COLUMN=10
+        fi
+    elif [[ "$RRNA1_STRAND" = "-" ]]; then
+        if [ $nreads_rRNA1_F -ge $nreads_rRNA1_R ]
+        then
+            # Note: we also include here the case where the nb of reads are equal
+            echo "sample: ${SAMPLE}  F1R2 is strand -, R1F2 is strand +"
+            STRAND=-1
+            STRAND_COLUMN=10
+        elif [ $nreads_rRNA1_F -lt $nreads_rRNA1_R ]
+        then
+            echo "sample: ${SAMPLE}  R1F2 is strand -, F1R2 is strand +"
+            STRAND=+1
+            STRAND_COLUMN=9
+        fi
+
     fi
 
+else
+    echo "WARNING: no rRNA annotation, using the + strand by default."
+    STRAND=+1
+    STRAND_COLUMN=9
 fi
 echo ${STRAND} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.F.strand
 
