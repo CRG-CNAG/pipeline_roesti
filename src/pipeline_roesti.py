@@ -25,6 +25,7 @@ import shlex
 import pandas as pd
 import json
 from socketIO_client import SocketIO, LoggingNamespace
+from send_socket_message import send_socket_message
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
 from mwTools.general import glob_file_list
@@ -563,6 +564,8 @@ def trim_adapter_PE_reads(input_files,
 
         # relay all the stdout, stderr, drmaa output to diagnose failures
         except error_drmaa_job as err:
+            if options.sendMessageToWebServer:
+                send_socket_message(options.analysisId, -1)
             raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
         std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -711,6 +714,8 @@ def trim_adapter_SE_reads(input_file,
 
         # relay all the stdout, stderr, drmaa output to diagnose failures
         except error_drmaa_job as err:
+            if options.sendMessageToWebServer:
+                send_socket_message(options.analysisId, -1)
             raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
         std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -925,6 +930,8 @@ def align_seq(input_files,
 
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            send_socket_message(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
     std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -1004,6 +1011,8 @@ def convert_sam_to_bam(sam_file,
 
         # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            send_socket_message(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     with logger_mutex:
@@ -1096,6 +1105,8 @@ def filter_alignments(sorted_bam_file,
 
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            send_socket_message(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     time.sleep(sleepTimeFilesystem)
@@ -1228,6 +1239,8 @@ def extract_footprints(input_files,
 
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            send_socket_message(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
 
@@ -1375,6 +1388,8 @@ def genome_coverage_fragment_count(reads_bed_file,
             logger.debug(std_err_string)
 
     except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            send_socket_message(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     with logger_mutex:
@@ -1466,17 +1481,10 @@ def write_jobid_files():
     #     f.write('')
 
     if options.sendMessageToWebServer:
-        print("Trying to connect by web socket...")
-        with SocketIO('dbspipes.crg.es', 50001, LoggingNamespace) as socketIO:
-            # Send message using web socket to the web server DBSpipes
-            print("Sending message to web server via websocket, analysisId={:s} and status={:d}".format(options.analysisId, status))
-            data = {"internal_id": options.analysisId, "status": status}
-            socketIO.emit('on_update', json.dumps(data))
-            # Listen
-            socketIO.wait(seconds=1)
-
+        send_socket_message(options.analysisId, status)
 
 #############################################################################
+
 
 pipelineDocFile.write_text(pipelineDoc)
 
