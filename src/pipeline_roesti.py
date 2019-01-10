@@ -399,9 +399,9 @@ iTask = 0
 
 #############################################################################
 
-cmdSendSocketMessage = '{} --analysisId {} {}'.format(str(scriptPath / 'send_socket_message.py'),
-                                                      options.analysisId,
-                                                      '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+cmdSendSocketMessageJobStarted = '{} --analysisId {} --status 1 {}'.format(str(scriptPath / 'send_socket_message.py'),
+                                                                           options.analysisId,
+                                                                           '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
 
 #############################################################################
 
@@ -530,7 +530,7 @@ def trim_adapter_PE_reads(input_files,
 
         # We send the message to the web server from the first node of computation when the job has started.
         cmd = (cmd_source_bash_profile +
-               cmdSendSocketMessage + " && " +
+               cmdSendSocketMessageJobStarted + " && " +
                " SeqPurge " +
                " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +
                " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +
@@ -678,7 +678,7 @@ def trim_adapter_SE_reads(input_file,
 
         # We send the message to the web server from the first node of computation when the job has started.
         cmd = (cmd_source_bash_profile +
-               cmdSendSocketMessage + " && " +
+               cmdSendSocketMessageJobStarted + " && " +
                " skewer-0.2.2-linux-x86_64 " +
                " " + input_file +
                " -x " + options.trim_adapter_seq_forward +
