@@ -15,6 +15,22 @@ from mwTools.general import glob_file_list
 from mwTools.bio import convert_genbank_to_annotation_df
 from mwTools.bio import convert_annotation_df_to_bed
 from mwTools.id import extract_fasta_id
+from mwTools.pandas import sort_df
+
+
+
+class GenomeError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
+def sort_bed_file(filePath, cwdPath):
+    # Sort the BED file following same order than bedtools
+    cmd = ("/users/lserrano/mweber/local/bin/sort {}".format(str(filePath)) +
+           " -k 1,1 -k 2,2n -k 3,3n > {}.sorted".format(str(filePath)) +
+           " && sleep 10 && mv {}.sorted {}".format(str(filePath), str(filePath)))
+    cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=str(cwdPath), shell=True)
+    return cmd_output
 
 
 def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputName=None, outputDir='.'):
@@ -111,11 +127,11 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
     # Check that we do not have any undefined DNA sequence
     undefinedGenomeList = [g for g in genomeList if g['genomeSeq'] is None]
     if len(undefinedGenomeList) > 0:
-        print("ERROR: we have undefined DNA sequence(s):", undefinedGenomeList)
-        print("       Please provide an additional fasta file containing the DNA sequence with the same id as the Genbank file,",
-              "       or an updated Genbank file that contains the DNA sequence.")
+        message = ("ERROR: we have undefined DNA sequence(s):" + undefinedGenomeList.__repr__() +
+                   "Please provide an additional fasta file containing the DNA sequence with the same id as the Genbank file,"
+                   " or an updated Genbank file that contains the DNA sequence.")
+        raise GenomeError(message)
         return
-
 
     # Choose output name
 
@@ -137,34 +153,50 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
     if annotDfList != []:
 
         annotDf = pd.concat(annotDfList)
+        # In fact, sorting here is useless because it does not follow the same sorting criteria as bedtool.
+        annotDf.sort_values(['start'], inplace=True)
+        annotDf = sort_df(annotDf, 'chromosome', key=lambda x: (x.upper(), x[0].islower()), reverse=False)
 
         CDSDf = annotDf[annotDf['feature'] == 'CDS']
-        with (outputPath / (outputName + '_CDS.bed')).open('w') as f:
+        filePath = outputPath / (outputName + '_CDS.bed')
+        with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(CDSDf))
         print("Writing CDS BED file", (outputName + '_CDS.bed'))
+        # See Note 1 below
+        sort_bed_file(filePath, outputPath)
 
         rRNADf = annotDf[annotDf['feature'] == 'rRNA']
-        rRNADf
-        with (outputPath / (outputName + '_rRNA.bed')).open('w') as f:
+        filePath = outputPath / (outputName + '_rRNA.bed')
+        with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(rRNADf))
         print("Writing rRNA BED file", (outputName + '_rRNA.bed'))
+        # See Note 1 below
+        sort_bed_file(filePath, outputPath)
 
         tRNADf = annotDf[annotDf['feature'] == 'tRNA']
-        tRNADf.head()
-        with (outputPath / (outputName + '_tRNA.bed')).open('w') as f:
+        filePath = outputPath / (outputName + '_tRNA.bed')
+        with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(tRNADf))
         print("Writing tRNA BED file", (outputName + '_tRNA.bed'))
+        # See Note 1 below
+        sort_bed_file(filePath, outputPath)
 
-        with (outputPath / (outputName + '_rRNA_tRNA.bed')).open('w') as f:
+        filePath = outputPath / (outputName + '_rRNA_tRNA.bed')
+        with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(pd.concat([tRNADf, rRNADf])))
         print("Writing rRNA_tRNA BED file", (outputName + '_rRNA_tRNA.bed'))
-
+        # See Note 1 below
+        sort_bed_file(filePath, outputPath)
 
     # Write genome list BED file
+    # Note 1: we **need** to sort the chromosome names in alplhabetical order and then the
+    # reads in start coordinates. Failing to do so will result in an error when computing the genome coverage using
+    # bedtools.
     with (outputPath / (outputName + '_genome.bed')).open('w') as f:
+        genomeList = sorted(genomeList, key=lambda x: (x['genomeId'].upper(), x['genomeId'][0].islower()))
+        print("genomeList", [g['genomeId'] for g in genomeList])
         for g in genomeList:
             f.write("{}\t{}\n".format(g['genomeId'], g['genomeLength']))
-
 
     # Index reference genome
 

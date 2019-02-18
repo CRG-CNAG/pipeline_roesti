@@ -51,12 +51,12 @@ if [[ ! -z "$8" ]]; then
     #       By default, overlaps are reported without respect to strand.
     # -F    Minimum overlap required as a fraction of B. Default is 1E-9 (i.e., 1bp).
     echo "Computing count per CDS."
-    bedtools intersect -c -s -F 0.5 -sorted -a ${GENOME_CDS_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed
+    bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${GENOME_CDS_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed
 fi
 
 if [[ ! -z "$9" ]]; then
     echo "Computing count per CDS for rRNA."
-    bedtools intersect -c -s -F 0.5 -sorted -a ${RRNA_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed
+    bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${RRNA_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed
 fi
 
 # Compute per base coverage

@@ -187,7 +187,7 @@ wc -l < ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed > ${OUTPUT_PATH_LOCAL}/${SAM
 # I installed it at /users/lserrano/mweber/local/bin/sort
 # See http://davetang.org/muse/2013/11/20/sorting-a-huge-bed-file/
 
-# Testing on file /users/lserrano/mweber/Translation_model/Ribosome_profiling_data/Mpn/RNA-seq/roesti_3_PE/Task05_filter_alignments/MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed
+# Benchmarking on file /users/lserrano/mweber/Translation_model/Ribosome_profiling_data/Mpn/RNA-seq/roesti_3_PE/Task05_filter_alignments/MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed
 # /usr/bin/time -v head -100000000 MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed | sort -k 2,2n -k 3,3n > MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed.sorted
 # /usr/bin/time -v head -100000000 MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed | /users/lserrano/mweber/local/bin/sort -k 2,2n -k 3,3n --parallel=2 > MPN_RP10_P2_UD_15116_AGTTCC.filtered.bed.sorted
 # For 1e8 lines, system sort, 1 thread, 11mn28s, 2.7M peak_mem
