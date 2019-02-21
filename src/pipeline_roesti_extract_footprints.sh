@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# != 6 ]; then
-    echo "ERROR: command line contains $# arguments should be 6"
+if [ $# != 7 ]; then
+    echo "ERROR: command line contains $# arguments should be 7"
     exit 1
 fi
 

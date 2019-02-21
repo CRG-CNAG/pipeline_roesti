@@ -45,9 +45,6 @@ Remark: we refer to insert as the original RNA fragment flanked by adapters and 
 
 """
 
-# Pipeline test options
-run_on_cluster = True
-
 # Command-line arguments
 formatter_class = argparse.RawDescriptionHelpFormatter
 formatter_class = argparse.ArgumentDefaultsHelpFormatter
@@ -126,6 +123,11 @@ options = parser.parse_args()
 
 pipeline_name = options.pipeline_name
 run_locally = options.run_locally
+# If running locally, only run 1 job
+if run_locally:
+    if options.njobs > 1:
+        print("WARNING: you are running the pipeline in local mode with njobs > 1. "
+              "Computations will be run in parallel on the same machine.")
 
 # Glob fastq files following list of patterns
 fastqFiles = [fn for pattern in options.input_fastq_files for fn in glob(pattern) if Path(fn).is_file()]
@@ -201,9 +203,6 @@ else:
 
 # Global bowtie2 options
 options.phredEncoding = 'phred33'
-# If running locally, only run 1 job
-# if run_locally:
-#     options.njobs = 1
 
 ## trim adapter
 options.no_trimming
@@ -379,12 +378,11 @@ def wait_for_any_of_files(filenameList, sleepTime=2):
     return
 
 
-
-
 #############################################################################
 
+
 # Start DRMAA session
-if run_on_cluster:
+if not run_locally:
     # Start shared drmaa session for all jobs / tasks in pipeline
     # drmaa Open Grid Forum API
     import drmaa
@@ -1498,7 +1496,7 @@ pipelineDocFile.write_text(pipelineDoc)
 # Change the history file for Ruffus in order to use several different pipelines in the same root folder
 history_file = "." + pipeline_name + ".ruffus_history.sqlite"
 options.history_file = history_file
-if run_on_cluster:
-    pipeline_printout(history_file=history_file)
-    cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose)
+pipeline_printout(history_file=history_file)
+cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose)
+if not run_locally:
     drmaa_session.exit()
