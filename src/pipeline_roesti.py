@@ -1068,6 +1068,7 @@ def filter_alignments(sorted_bam_file,
        
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_filter_script.sh')
+    filter_alignments_nthreads = min(options.nThreads, 8)
 
     cmd = cmd_source_bash_profile +\
           " " + filter_script_filename +\
@@ -1080,7 +1081,8 @@ def filter_alignments(sorted_bam_file,
           " " + options.rRNA_tRNA_bedfile +\
           " " + str(scriptPath) +\
           " " + ("true" if options.remove_rRNA else "false") +\
-          " " + options.seq_end
+          " " + options.seq_end +\
+          " " + str(filter_alignments_nthreads)
     with logger_mutex:
         logger.debug(cmd)
 
@@ -1091,7 +1093,7 @@ def filter_alignments(sorted_bam_file,
             job_queue_name = short_queue
         else:
             job_queue_name = long_queue
-        job_other_options = " -pe smp " + str(8) +\
+        job_other_options = " -pe smp " + str(filter_alignments_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
                             " -l h_vmem=24G,virtual_free=24G"
@@ -1208,6 +1210,7 @@ def extract_footprints(input_files,
         reads_bed_file = input_files[1]
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_extract_footprints.sh')
+    extract_footprints_nthreads = min(options.nThreads, 4)
 
     cmd = cmd_source_bash_profile +\
           " " + filter_script_filename +\
@@ -1216,7 +1219,8 @@ def extract_footprints(input_files,
           " " + output_path +\
           " false" +\
           " " + str(scriptPath) +\
-          " " + str(options.genomeBedFile)
+          " " + str(options.genomeBedFile) +\
+          " " + str(extract_footprints_nthreads)
     with logger_mutex:
         logger.debug(cmd)
 
@@ -1227,7 +1231,7 @@ def extract_footprints(input_files,
             job_queue_name = short_queue
         else:
             job_queue_name = long_queue
-        job_other_options = " -pe smp " + str(4) +\
+        job_other_options = " -pe smp " + str(extract_footprints_nthreads) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
                             " -l h_vmem=16G,virtual_free=16G"
