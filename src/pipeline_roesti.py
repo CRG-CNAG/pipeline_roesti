@@ -100,7 +100,7 @@ parser.add_argument('--genome-CDS-bedfile', dest='genomeCDSBedFile',
                     help="Path to the BED file for all CDS. Will be used to count mRNA fragments for each gene. If set to empty string \"\", the computation of fragment count per CDS will be skipped.")
 parser.add_argument('--nthreads', dest='nThreads', default=12, type=int,
                     help='Number of threads to use in each cluster node (shared memory). This will reduce computational time, in particular for bowtie2 (alignment).')
-parser.add_argument('--njobsmax', dest='njobs', default=200, type=int,
+parser.add_argument('--njobs', dest='njobs', default=200, type=int,
                     help='Number of concurrent jobs to launch on the cluster (each job will use nThreads nodes in shared memory).')
 parser.add_argument('--bash-profile', dest='bash_profile', default='',
                     help='Bash profile is executed before each job on the cluster in order to load the dependencies. By default bash profile path is automatically detected in user\'s home directory, this option sets the path manually.')
@@ -202,8 +202,8 @@ else:
 # Global bowtie2 options
 options.phredEncoding = 'phred33'
 # If running locally, only run 1 job
-if run_locally:
-    options.njobs = 1
+# if run_locally:
+#     options.njobs = 1
 
 ## trim adapter
 options.no_trimming
