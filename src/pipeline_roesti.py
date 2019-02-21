@@ -14,16 +14,13 @@ import ruffus.cmdline as cmdline
 import time
 from pathlib import Path
 import os
-import shutil
 import re
 import argparse
 from glob import glob
 from itertools import islice
 import datetime
 import subprocess
-import shlex
 import pandas as pd
-import json
 from socketIO_client import SocketIO, LoggingNamespace
 from send_socket_message import send_socket_message
 
