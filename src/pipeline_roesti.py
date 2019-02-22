@@ -162,7 +162,6 @@ def group_paired_end_fastq_files(fastqFiles):
 # Paths
 rootPath = Path('/users/lserrano/mweber')
 scriptPath = rootPath / 'Research_cloud' / 'RNA-seq_data_analysis' / 'src'
-# rnaSeq_data_path = rootPath / 'Translation_model' / 'Ribosome_profiling_data'
 # Note: here we must use the full pathname!!!
 outputPath = Path(options.output_dir).resolve()
 os.chdir(str(outputPath))
