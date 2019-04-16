@@ -9,6 +9,7 @@ import seaborn
 seaborn.set_style("darkgrid")
 seaborn.set_style("whitegrid")
 
+from ruffus import pipeline_printout
 from ruffus import *
 import ruffus.cmdline as cmdline
 import time
@@ -21,7 +22,6 @@ from itertools import islice
 import datetime
 import subprocess
 import pandas as pd
-from socketIO_client import SocketIO, LoggingNamespace
 from send_socket_message import send_socket_message
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
@@ -194,9 +194,11 @@ if options.bash_profile == '':
         raise SystemError
 loadDependenciesScriptPath = scriptPath / "load_dependencies.sh"
 if options.host == 'cluster':
-    cmd_source_bash_profile = ". {} && . {} && cd {} &&".format(options.bash_profile,
-                                                                str(loadDependenciesScriptPath),
-                                                                str(outputPath))
+    cmd_source_bash_profile = ". {} && {} && cd {} &&".format(options.bash_profile,
+                                                              str(loadDependenciesScriptPath),
+                                                              str(outputPath))
+    cmd_source_bash_profile = ". {} && cd {} &&".format(str(loadDependenciesScriptPath),
+                                                        str(outputPath))
 else:
     cmd_source_bash_profile = "cd {} &&".format(str(outputPath))
 
@@ -239,7 +241,7 @@ options.align_maxReSeed = 3    # very sensitive: -R 3
 if options.library_type == 'ribo-seq':
     options.align_maxInsertLength = 400
 elif options.library_type == 'rna-seq':
-    options.align_maxInsertLength = 1000     # This is the theoretical maximum fragment length in the library preparation
+    options.align_maxInsertLength = 2000     # This is the theoretical maximum fragment length in the library preparation
 options.align_max_reported_alignments = 0    # set to 0 to deactivate the option
 
 ## convert_sam_to_bam
@@ -387,7 +389,10 @@ if not run_locally:
     import drmaa
     drmaa_session = drmaa.Session()
     drmaa_session.initialize()
-    from ruffus.drmaa_wrapper import run_job, error_drmaa_job
+else:
+    drmaa_session = None
+
+from ruffus.drmaa_wrapper import run_job, error_drmaa_job
 
 iTask = 0
 

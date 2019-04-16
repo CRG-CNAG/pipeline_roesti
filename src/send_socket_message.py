@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from socketIO_client import SocketIO, LoggingNamespace
+# from websocket import create_connection
 import argparse
 import json
 
@@ -13,6 +14,17 @@ def send_socket_message(analysisId, status, verbose=1):
         socketIO.emit('on_update', json.dumps(data))
         # Listen
         socketIO.wait(seconds=1)
+
+
+# def send_socket_message(analysisId, status, verbose=1):
+#     ws = create_connection("ws://dbspipes.crg.es", port)
+#     print("Sending 'Hello, World'...")
+#     ws.send("Hello, World")
+#     print("Sent")
+#     print("Receiving...")
+#     result =  ws.recv()
+#     print("Received '%s'" % result)
+#     ws.close()
 
 
 if __name__ == '__main__':

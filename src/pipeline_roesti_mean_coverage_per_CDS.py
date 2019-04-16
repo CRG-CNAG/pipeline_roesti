@@ -74,19 +74,19 @@ if method == 'file':
 elif method == 'memory':
 
     covColList = ['ref', 'pos', 'cov']
-    covPlusDf = (pd.read_table(args.bed_cov_strand_p_file, header=None, names=covColList)
+    covPlusDf = (pd.read_csv(args.bed_cov_strand_p_file, header=None, names=covColList, sep='\t')
                  .sort_values('pos'))
-    covMinusDf = (pd.read_table(args.bed_cov_strand_m_file, header=None, names=covColList)
+    covMinusDf = (pd.read_csv(args.bed_cov_strand_m_file, header=None, names=covColList, sep='\t')
                   .sort_values('pos'))
     if Path(args.cds_bed_file).is_file():
-        CDSDf = (pd.read_table(args.cds_bed_file, header=None, names=bedCols)
+        CDSDf = (pd.read_csv(args.cds_bed_file, header=None, names=bedCols, sep='\t')
                  .sort_values(['start', 'end']))
         CDSDf['length'] = CDSDf['end'] - CDSDf['start']
     else:
         CDSDf = pd.DataFrame(columns=bedCols + ['length'])
 
     if Path(args.rRNA_bedfile).is_file():
-        rRNADf = (pd.read_table(args.rRNA_bedfile, header=None, names=bedCols)
+        rRNADf = (pd.read_csv(args.rRNA_bedfile, header=None, names=bedCols, sep='\t')
                   .sort_values(['start', 'end']))
         rRNADf['length'] = rRNADf['end'] - rRNADf['start']
         rRNAList = rRNADf['name'].tolist()
@@ -122,13 +122,13 @@ print("Computing average coverage per base for all CDS... finished")
 
 print("Plotting and saving average coverage per base and fragment count...")
 
-avgCovDf = pd.read_table(outputFilename, header=None, names=bedCols)
+avgCovDf = pd.read_csv(outputFilename, header=None, names=bedCols, sep='\t')
 print("avgCovDf\n", avgCovDf)
 if len(avgCovDf) > 0:
     avgCovDf.rename(columns={'value':'avg_coverage'}, inplace=True)
 
-    fragmentCountDf = pd.read_table(str(Path(args.output_path) / "{}.CDS_fragment_count.bed".format(args.sample_name)),
-                                    header=None, names=bedCols)
+    fragmentCountDf = pd.read_csv(str(Path(args.output_path) / "{}.CDS_fragment_count.bed".format(args.sample_name)),
+                                    header=None, names=bedCols, sep='\t')
     fragmentCountDf.rename(columns={'value':'fragment_count'}, inplace=True)
     if len(fragmentCountDf) > 0:
         fragmentCountDf['fragment_count_per_base'] = fragmentCountDf.apply(lambda x:
@@ -140,7 +140,7 @@ if len(avgCovDf) > 0:
 
     filename = str(Path(args.output_path) / "{}.rRNA_fragment_count.bed".format(args.sample_name))
     if Path(filename).exists():
-        rRNAfragmentCountDf = pd.read_table(filename, header=None, names=bedCols)
+        rRNAfragmentCountDf = pd.read_csv(filename, header=None, names=bedCols, sep='\t')
         rRNAfragmentCountDf.rename(columns={'value':'fragment_count'}, inplace=True)
         if len(rRNAfragmentCountDf) > 0:
             rRNAfragmentCountDf['fragment_count_per_base'] = rRNAfragmentCountDf.apply(lambda x:
