@@ -37,7 +37,7 @@ Pipeline to analyze RNA-seq data from RNA-seq and Ribo-seq (ribosome profiling) 
 Python 3.5 script. |
 
 Author: Marc Weber |
-Last updated: 2017.11.23 |
+Last updated: 2019.04.16 |
 Affiliation: Center for Genomic Regulation, Luis Serrano's lab |
 email: webermarcolivier@gmail.com; marc.weber@crg.eu |
 
@@ -108,15 +108,6 @@ parser.add_argument('--sendMessageToWebServer', action='store_true',
                     help="Send a message to the webserver dbspipe when the pipeline has finished. Only for pipeline launched by the web server application.")
 parser.add_argument('--host', dest='host', default='cluster', type=str)
 options = parser.parse_args()
-
-
-#################################
-# TODO
-
-# change the name of the tRNA_rRNA file to something more consistent like
-#     the file "regions_to_remove"
-
-# INCLUDE RRNA COUNTS IN THE FINAL VALUES
 
 
 ## Global
@@ -194,9 +185,9 @@ if options.bash_profile == '':
         raise SystemError
 loadDependenciesScriptPath = scriptPath / "load_dependencies.sh"
 if options.host == 'cluster':
-    cmd_source_bash_profile = ". {} && {} && cd {} &&".format(options.bash_profile,
-                                                              str(loadDependenciesScriptPath),
-                                                              str(outputPath))
+    # cmd_source_bash_profile = ". {} && {} && cd {} &&".format(options.bash_profile,
+    #                                                           str(loadDependenciesScriptPath),
+    #                                                           str(outputPath))
     cmd_source_bash_profile = ". {} && cd {} &&".format(str(loadDependenciesScriptPath),
                                                         str(outputPath))
 else:
@@ -241,7 +232,7 @@ options.align_maxReSeed = 3    # very sensitive: -R 3
 if options.library_type == 'ribo-seq':
     options.align_maxInsertLength = 400
 elif options.library_type == 'rna-seq':
-    options.align_maxInsertLength = 2000     # This is the theoretical maximum fragment length in the library preparation
+    options.align_maxInsertLength = 1200     # This is the theoretical maximum fragment length in the library preparation
 options.align_max_reported_alignments = 0    # set to 0 to deactivate the option
 
 ## convert_sam_to_bam
