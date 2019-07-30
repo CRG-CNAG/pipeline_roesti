@@ -25,30 +25,8 @@ import pandas as pd
 from send_socket_message import send_socket_message
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
-# from mwTools.general import glob_file_list
-# from mwTools.general import open_by_suffix
-
-
-def glob_file_list(fileList):
-    "Apply glob on the list of file pattern, filter for files only, remove duplicated files."
-    if fileList is None or fileList == '':
-        fileList = None
-    else:
-        fileList = [fn for pattern in fileList for fn in glob(pattern) if Path(fn).is_file()]
-        # Remove duplicated files from list (can happen if multiple patterns match same files)
-        fileList = sorted(list(set(fileList)))
-    return fileList
-
-
-def open_by_suffix(filename):
-    """Detect compressed file by filename suffix, and return gzip, bz2, or normal file handles."""
-    if Path(filename).suffix == '.gz':
-        return gzip.open(filename, 'rt')
-    elif Path(filename).suffix == '.bz2':
-        return bz2.BZ2file(filename, 'rt')
-    else:
-        return open(filename, 'r')
-
+from mwTools.general import glob_file_list
+from mwTools.general import open_by_suffix
 
 # --------------------------------------------------
 
