@@ -157,7 +157,7 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
         annotDf.sort_values(['start'], inplace=True)
         annotDf = sort_df(annotDf, 'chromosome', key=lambda x: (x.upper(), x[0].islower()), reverse=False)
 
-        CDSDf = annotDf[annotDf['feature'] == 'CDS']
+        CDSDf = annotDf[annotDf['feature'].str.contains('CDS')]
         filePath = outputPath / (outputName + '_CDS.bed')
         with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(CDSDf))
