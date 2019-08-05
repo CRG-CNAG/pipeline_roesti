@@ -455,11 +455,11 @@ infoStr += "a2 " + options.trim_adapter_seq_reverse + "\n\n"
 infoStr += "-threads " + str(options.nThreads) + "\n\n"
 pipelineDoc += infoStr
 
-taskPathList = []
+intermediateTaskPathList = []
 iTask += 1
 task_name = "trim_adapter_PE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-taskPathList.append(task_path)
+intermediateTaskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for paired-end library type
 @active_if(options.seq_end == 'paired-end')
@@ -620,7 +620,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = "trim_adapter_SE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-taskPathList.append(task_path)
+intermediateTaskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for single-end library type
 @active_if(options.seq_end == 'single-end')
@@ -814,7 +814,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'align_seq'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-taskPathList.append(task_path)
+intermediateTaskPathList.append(task_path)
 if options.seq_end == 'single-end':
     regexInputFiles = r'^(.+/)*(?P<SAMPLENAME>.+)\.trimmed\.fastq(\.gz)?.*'
 elif options.seq_end == 'paired-end':
@@ -947,7 +947,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'convert_sam_to_bam'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-taskPathList.append(task_path)
+intermediateTaskPathList.append(task_path)
 @follows(align_seq, mkdir(str(task_path)))
 @transform(align_seq,
 
@@ -1031,7 +1031,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'filter_alignments'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-taskPathList.append(task_path)
+intermediateTaskPathList.append(task_path)
 @follows(convert_sam_to_bam, mkdir(str(task_path)))
 @transform(convert_sam_to_bam,
 
@@ -1423,7 +1423,7 @@ task_name = 'delete_intermediate_files'
 def delete_intermediate_files():
 
     print("Delete intermediate files.")
-    for p in taskPathList:
+    for p in intermediateTaskPathList:
         for f in p.glob('*'):
             print("deleting file:", f)
             f.unlink()
