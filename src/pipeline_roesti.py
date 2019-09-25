@@ -22,7 +22,7 @@ from itertools import islice
 import datetime
 import subprocess
 import pandas as pd
-from send_socket_message import send_socket_message
+from send_socket_message import update_analysis
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
 from mwTools.general import glob_file_list
@@ -389,9 +389,13 @@ iTask = 0
 
 #############################################################################
 
-cmdSendSocketMessageJobStarted = '{} --analysisId {} --status 1 {}'.format(str(scriptPath / 'send_socket_message.py'),
-                                                                           options.analysisId,
-                                                                           '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+cmdJobRunningRequest = '{} --analysisId {} --status 1 {}'.format(str(scriptPath / 'send_socket_message.py'),
+                                                                 options.analysisId,
+                                                                 '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+
+cmdProgressRequest = '{} --analysisId {} --type 1 {} '.format(str(scriptPath / 'send_socket_message.py'),
+                                                              options.analysisId,
+                                                              '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
 
 #############################################################################
 
@@ -520,7 +524,8 @@ def trim_adapter_PE_reads(input_files,
 
         # We send the message to the web server from the first node of computation when the job has started.
         cmd = (cmd_source_bash_profile +
-               cmdSendSocketMessageJobStarted + " && " +
+               cmdJobRunningRequest + " && " +
+               cmdProgressRequest + '--progress "Trim adapter PE reads" --n 1 && ' +\
                " SeqPurge " +
                " -in1 {} -in2 {} ".format(input_files[0], input_files[1]) +
                " -out1 {} -out2 {} ".format(output_paired_files[0], output_paired_files[1]) +
@@ -553,7 +558,7 @@ def trim_adapter_PE_reads(input_files,
         # relay all the stdout, stderr, drmaa output to diagnose failures
         except error_drmaa_job as err:
             if options.sendMessageToWebServer:
-                send_socket_message(options.analysisId, -1)
+                update_analysis(options.analysisId, -1)
             raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
         std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -668,7 +673,8 @@ def trim_adapter_SE_reads(input_file,
 
         # We send the message to the web server from the first node of computation when the job has started.
         cmd = (cmd_source_bash_profile +
-               cmdSendSocketMessageJobStarted + " && " +
+               cmdJobRunningRequest + " && " +
+               cmdProgressRequest + '--progress "Trim adapter SE reads" --n 2 && ' +\
                " skewer-0.2.2-linux-x86_64 " +
                " " + input_file +
                " -x " + options.trim_adapter_seq_forward +
@@ -703,7 +709,7 @@ def trim_adapter_SE_reads(input_file,
         # relay all the stdout, stderr, drmaa output to diagnose failures
         except error_drmaa_job as err:
             if options.sendMessageToWebServer:
-                send_socket_message(options.analysisId, -1)
+                update_analysis(options.analysisId, -1)
             raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
         std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -877,6 +883,7 @@ def align_seq(input_files,
         bowtieInputOptions = " -1 {} -2 {} ".format(read1, read2)
 
     cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Align reads to genome" --n 3 && ' +\
           "bowtie2 " +\
           " -x {} ".format(str(options.align_indexed_ref_genome_path)) +\
           bowtieInputOptions +\
@@ -919,7 +926,7 @@ def align_seq(input_files,
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
         if options.sendMessageToWebServer:
-            send_socket_message(options.analysisId, -1)
+            update_analysis(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:", cmd, err, stdout_res, stderr_res])))
 
     std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
@@ -969,6 +976,7 @@ def convert_sam_to_bam(sam_file,
     # if a float is passed, it seems that samtools takes the value as bytes and will create
     # hundred of thousands of temporary files, potentially collapsing the filesystem.
     cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Convert alignment file SAM to sorted BAM" --n 4 && ' +\
           " samtools view -b -h -u " + sam_file +\
           " | samtools sort -@ {:d} -m {:d}M -T {} -o {}".format(options.samtools_sort_nthread,
                                                                  options.samtools_sort_max_mem_per_thread,
@@ -1002,7 +1010,7 @@ def convert_sam_to_bam(sam_file,
         # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
         if options.sendMessageToWebServer:
-            send_socket_message(options.analysisId, -1)
+            update_analysis(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     with logger_mutex:
@@ -1061,6 +1069,7 @@ def filter_alignments(sorted_bam_file,
     filter_alignments_nthreads = min(options.nThreads, 8)
 
     cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Filter alignments by quality and size and report statistics" --n 5 && ' +\
           " " + filter_script_filename +\
           " " + sample_name +\
           " " + input_path +\
@@ -1100,7 +1109,7 @@ def filter_alignments(sorted_bam_file,
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
         if options.sendMessageToWebServer:
-            send_socket_message(options.analysisId, -1)
+            update_analysis(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     time.sleep(sleepTimeFilesystem)
@@ -1203,6 +1212,7 @@ def extract_footprints(input_files,
     extract_footprints_nthreads = min(options.nThreads, 4)
 
     cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Extract ribosome footprints inserts by size" --n 6 && ' +\
           " " + filter_script_filename +\
           " " + sample_name +\
           " " + input_path +\
@@ -1238,7 +1248,7 @@ def extract_footprints(input_files,
     # relay all the stdout, stderr, drmaa output to diagnose failures
     except error_drmaa_job as err:
         if options.sendMessageToWebServer:
-            send_socket_message(options.analysisId, -1)
+            update_analysis(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
 
@@ -1347,6 +1357,7 @@ def genome_coverage_fragment_count(reads_bed_file,
     filter_script_filename = str(scriptPath / 'pipeline_roesti_genome_coverage.sh')
 
     cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Compute genome coverage and fragment count of reads (mRNA)" --n 7 && ' +\
           " " + filter_script_filename +\
           " " + reads_bed_file +\
           " " + sample_name +\
@@ -1389,7 +1400,7 @@ def genome_coverage_fragment_count(reads_bed_file,
 
     except error_drmaa_job as err:
         if options.sendMessageToWebServer:
-            send_socket_message(options.analysisId, -1)
+            update_analysis(options.analysisId, -1)
         raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
 
     with logger_mutex:
@@ -1481,7 +1492,7 @@ def write_jobid_files():
     #     f.write('')
 
     if options.sendMessageToWebServer:
-        send_socket_message(options.analysisId, status)
+        update_analysis(options.analysisId, status)
 
 #############################################################################
 
