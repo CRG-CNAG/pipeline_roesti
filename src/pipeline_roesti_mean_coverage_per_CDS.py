@@ -162,9 +162,13 @@ if len(avgCovDf) > 0:
 
     # Compute fragment per kilobase per million fragments (FPKM)
     nFragmentTotal = dataDf['fragment_count'].sum()
+    if nFragmentTotal == 0:
+        nFragmentTotal = np.nan
     dataDf['FPKM'] = dataDf['fragment_count']/((nFragmentTotal/1e6) * ((dataDf['end'] - dataDf['start'])/1e3))
 
     nFragmentTotal = dataDf_noRRNA['fragment_count'].sum()
+    if nFragmentTotal == 0:
+        nFragmentTotal = np.nan
     dataDf_noRRNA['FPKM_no_rRNA'] = dataDf_noRRNA['fragment_count']/((nFragmentTotal/1e6) * ((dataDf_noRRNA['end'] - dataDf_noRRNA['start'])/1e3))
 
     # Compute transcript per million (TMP)
@@ -175,17 +179,25 @@ if len(avgCovDf) > 0:
     # The usual way is to use count per base to derive TPM.
     fragmentPerBase = dataDf['fragment_count']/(dataDf['end'] - dataDf['start'])
     fragmentPerBaseTot = fragmentPerBase.sum()
+    if fragmentPerBaseTot == 0:
+        fragmentPerBaseTot = np.nan
     dataDf['TPM (based on fragment count)'] = (1e6 * fragmentPerBase / fragmentPerBaseTot)
 
     fragmentPerBase = dataDf_noRRNA['fragment_count']/(dataDf_noRRNA['end'] - dataDf_noRRNA['start'])
     fragmentPerBaseTot = fragmentPerBase.sum()
+    if fragmentPerBaseTot == 0:
+        fragmentPerBaseTot = np.nan
     dataDf_noRRNA['TPM (based on fragment count) no_rRNA'] = (1e6 * fragmentPerBase / fragmentPerBaseTot)
 
     # We also use average coverage to derive TPM.
     avgCovTot = dataDf['avg_coverage'].sum()
+    if avgCovTot == 0:
+        avgCovTot = np.nan
     dataDf['TPM (based on average coverage)'] = (1e6 * dataDf['avg_coverage'] / avgCovTot)
 
     avgCovTot = dataDf_noRRNA['avg_coverage'].sum()
+    if avgCovTot == 0:
+        avgCovTot = np.nan
     dataDf_noRRNA['TPM (based on average coverage) no_rRNA'] = (1e6 * dataDf_noRRNA['avg_coverage'] / avgCovTot)
 
     colList = ['ref', 'id', 'start', 'end', 'strand', 'mapq'] + list(set(dataDf_noRRNA.columns) - set(dataDf.columns))
