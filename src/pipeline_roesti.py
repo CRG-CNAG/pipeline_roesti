@@ -67,7 +67,7 @@ parser.add_argument('--run-locally', dest='run_locally', action='store_true',
                     help='Run the pipeline on local machine (as opposed to submitting jobs to the cluster). Note that multiple threads could be used.')
 parser.add_argument('--pipeline-name', dest='pipeline_name', default=pipeline_name,
                     help='Name of the pipeline. Important: the history of up-to-date files is kept in a database of the same name in the output folder, .pipeline_roesti.ruffus_history.sqlite.')
-parser.add_argument('--library-type', dest='library_type', default='rna-seq', choices=['ribo-seq', 'rna-seq'],
+parser.add_argument('--library-type', dest='library_type', default='rna-seq', choices=['ribo-seq', 'rna-seq', 'hydro-trna-seq'],
                     help="Type of RNA-seq library. In ribosome profiling data analysis, additional fragment filtering is applied in order to select ribosome footprints.")
 parser.add_argument('--seq-end', dest='seq_end', default='paired-end', choices=['single-end', 'paired-end'],
                     help="Single-end or paired-end sequencing data.")
@@ -211,6 +211,12 @@ elif options.library_type == 'rna-seq':
         options.trim_adapter_seq_forward = 'AGATCGGAAGAGCACACGTCT'
     if options.trim_adapter_seq_reverse == '':
         options.trim_adapter_seq_reverse = 'AGATCGGAAGAGCACACGTCT'
+elif options.library_type == 'hydro-trna-seq':
+    options.trim_adapter_min_length = 10
+    if options.trim_adapter_seq_forward == '':
+        options.trim_adapter_seq_forward = 'AGATCGGAAGAGCACACGTCT'
+    if options.trim_adapter_seq_reverse == '':
+        options.trim_adapter_seq_reverse = 'AGATCGGAAGAGCACACGTCT'
 
 ## align
 options.align_alignmentMode = 'end-to-end'
@@ -223,6 +229,9 @@ if options.library_type == 'ribo-seq':
 elif options.library_type == 'rna-seq':
     options.align_nMismatches = 0
     options.align_seedLength = 20
+elif options.library_type == 'hydro-trna-seq':
+    options.align_nMismatches = 1
+    options.align_seedLength = 12
 options.align_seedInterval = 'S,1,1.15'    # mode sensitive. For read length of 50, seed interval is 1 + 1.15*sqrt(50) = 9.13
 options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
 
@@ -233,6 +242,8 @@ if options.library_type == 'ribo-seq':
     options.align_maxInsertLength = 400
 elif options.library_type == 'rna-seq':
     options.align_maxInsertLength = 1200     # This is the theoretical maximum fragment length in the library preparation
+elif options.library_type == 'hydro-trna-seq':
+    options.align_maxInsertLength = 200
 options.align_max_reported_alignments = 0    # set to 0 to deactivate the option
 
 ## convert_sam_to_bam
@@ -1312,10 +1323,10 @@ iTask += 1
 task_name = 'genome_coverage_fragment_count'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
 # Only run this analysis for rna data type
-if options.library_type == 'rna-seq':
+if options.library_type in ['rna-seq', 'hydro-trna-seq']:
     task_path.mkdir(exist_ok=True)
     finalResultsPath = task_path
-@active_if(options.library_type == 'rna-seq')
+@active_if(options.library_type in ['rna-seq', 'hydro-trna-seq'])
 @follows(filter_alignments, mkdir(str(task_path)))
 @transform(filter_alignments,
 
@@ -1503,6 +1514,9 @@ pipelineDocFile.write_text(pipelineDoc)
 history_file = "." + pipeline_name + ".ruffus_history.sqlite"
 options.history_file = history_file
 pipeline_printout(history_file=history_file)
-cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose)
+# gnu_make_maximal_rebuild_mode = True
+gnu_make_maximal_rebuild_mode = False
+cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose,
+            gnu_make_maximal_rebuild_mode=gnu_make_maximal_rebuild_mode)
 if not run_locally:
     drmaa_session.exit()
