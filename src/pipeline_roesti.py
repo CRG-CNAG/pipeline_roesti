@@ -251,12 +251,12 @@ if run_locally:
     options.samtools_sort_tmp_dir = '.'
 else:
     options.samtools_sort_tmp_dir = '$TMPDIR'
-options.samtools_sort_max_mem = 24000    # M
+options.samtools_sort_max_mem = 28000    # M
 options.samtools_sort_nthread = 4
 # Note: maximum memory per thread **has to be an integer**, otherwise it is interpreted as bytes
 # Note: we have to allocate some free memory for the main samtools thread, probably for the
 # file merging, otherwise the job will reach memory limit.
-options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 6000) / options.samtools_sort_nthread)
+options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 7000) / options.samtools_sort_nthread)
 
 ## filter_alignments
 # ...
@@ -577,6 +577,7 @@ def trim_adapter_PE_reads(input_files,
             logger.debug(std_err_string)
 
         wait_for_file(summaryFilename, sleepTimeFilesystem)
+        print("summary file found", summaryFilename)
 
         # Extract nb of valid reads from the summary file and write to a small metadata file
         with open(summaryFilename,'r') as summary_file:
@@ -686,7 +687,7 @@ def trim_adapter_SE_reads(input_file,
         cmd = (cmd_source_bash_profile +
                cmdJobRunningRequest + " && " +
                cmdProgressRequest + '--progress "Trim adapter SE reads" --n 2 && ' +\
-               " skewer-0.2.2-linux-x86_64 " +
+               " skewer " +
                " " + input_file +
                " -x " + options.trim_adapter_seq_forward +
                " -l " + str(options.trim_adapter_min_length) +
