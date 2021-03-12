@@ -156,8 +156,15 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
         # In fact, sorting here is useless because it does not follow the same sorting criteria as bedtool.
         annotDf.sort_values(['start'], inplace=True)
         annotDf = sort_df(annotDf, 'chromosome', key=lambda x: (x.upper(), x[0].islower()), reverse=False)
-
-        CDSDf = annotDf[annotDf['feature'].str.contains('(CDS)|(tRNA)|(ncRNA)|(sRNA)')]
+        # We keep all the feature types
+        # CDSDf = annotDf[annotDf['feature'].str.contains('(CDS)|(tRNA)|(ncRNA)|(sRNA)')]
+        CDSDf = annotDf
+        # In the BED file, features with the same ID and different types will be the same,
+        # because we only write the id. We will collapse similar feature together, such
+        # as gene and CDS that represents the same coordinates and id.
+        print("CDSDf:\n", CDSDf)
+        CDSDf = CDSDf.sort_values('feature').drop_duplicates(subset=['chromosome', 'start', 'end', 'strand', 'id'])
+        print("CDSDf:\n", CDSDf)
         filePath = outputPath / (outputName + '_CDS.bed')
         with filePath.open('w') as f:
             f.write(convert_annotation_df_to_bed(CDSDf))

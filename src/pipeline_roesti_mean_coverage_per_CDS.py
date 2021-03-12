@@ -18,6 +18,7 @@ parser.add_argument("bed_cov_strand_m_file")
 parser.add_argument("cds_bed_file")
 parser.add_argument("output_path")
 parser.add_argument("sample_name")
+parser.add_argument("nreads_bed")
 parser.add_argument("rRNA_bedfile", default=None)
 args = parser.parse_args()
 
@@ -147,7 +148,7 @@ if len(avgCovDf) > 0:
                                                                                        (x['fragment_count'] /
                                                                                         (x['end'] - x['start'])),
                                                                                        axis=1)
-        fragmentCountDf = pd.concat([fragmentCountDf, rRNAfragmentCountDf])
+        fragmentCountDf = pd.concat([fragmentCountDf, rRNAfragmentCountDf], sort=False)
     else:
         rRNAfragmentCountDf = None
 
@@ -161,7 +162,11 @@ if len(avgCovDf) > 0:
     print("dataDf_noRRNA.columns", dataDf_noRRNA.columns)
 
     # Compute fragment per kilobase per million fragments (FPKM)
-    nFragmentTotal = dataDf['fragment_count'].sum()
+    # here we should strictly take the total fragments that map to the genome, not the sum of the counted reads.
+    # if there are overlapping features, this could be wrong.
+    nFragmentTotal = float(args.nreads_bed)
+    print("nFragmentTotal:", nFragmentTotal)
+    # nFragmentTotal = dataDf['fragment_count'].sum()
     if nFragmentTotal == 0:
         nFragmentTotal = np.nan
     dataDf['FPKM'] = dataDf['fragment_count']/((nFragmentTotal/1e6) * ((dataDf['end'] - dataDf['start'])/1e3))
@@ -214,29 +219,30 @@ if len(avgCovDf) > 0:
 
 
 
-    # Draw correlation
-    plot_filename = str(Path(args.output_path) / "{}.CDS_fragment_count_avg_coverage_corr.png".format(args.sample_name))
-    fig = plt.figure(figsize=(14,12))
-    ax = fig.add_subplot(111)
-    ax.set_title(args.sample_name)
-    # Drop the ribosomal RNA which would mask the real correlation beteween CDS measures
-    plotDf = dataDf[dataDf['id'].map(lambda x: x not in rRNAList)].copy()
-    if len(plotDf) > 5:
-        seaborn.lmplot(x="fragment_count_per_base", y="avg_coverage", data=plotDf)
-        plt.savefig(plot_filename)
-
-        plot_filename = str(Path(args.output_path) / "{}.CDS_normalization_methods_corr.png".format(args.sample_name))
-        fig, ax = plt.subplots(figsize=(22, 22))
+    if False:
+        # Draw correlation
+        plot_filename = str(Path(args.output_path) / "{}.CDS_fragment_count_avg_coverage_corr.png".format(args.sample_name))
+        fig = plt.figure(figsize=(14,12))
+        ax = fig.add_subplot(111)
         ax.set_title(args.sample_name)
+        # Drop the ribosomal RNA which would mask the real correlation beteween CDS measures
+        plotDf = dataDf[dataDf['id'].map(lambda x: x not in rRNAList)].copy()
+        if len(plotDf) > 5:
+            seaborn.lmplot(x="fragment_count_per_base", y="avg_coverage", data=plotDf)
+            plt.savefig(plot_filename)
 
-        seaborn.set(font_scale=0.7)
-        grid = seaborn.pairplot(data=plotDf,
-                                vars=['avg_coverage', 'fragment_count', 'FPKM',
-                                      'TPM (based on fragment count)', 'TPM (based on average coverage)'],
-                                hue='fragment_count < 100', kind='reg')
-        plt.savefig(plot_filename)
+            plot_filename = str(Path(args.output_path) / "{}.CDS_normalization_methods_corr.png".format(args.sample_name))
+            fig, ax = plt.subplots(figsize=(22, 22))
+            ax.set_title(args.sample_name)
 
-    print("Plotting and saving average coverage per base and fragment count... finished")
+            seaborn.set(font_scale=0.7)
+            grid = seaborn.pairplot(data=plotDf,
+                                    vars=['avg_coverage', 'fragment_count', 'FPKM',
+                                          'TPM (based on fragment count)', 'TPM (based on average coverage)'],
+                                    hue='fragment_count < 100', kind='reg')
+            plt.savefig(plot_filename)
+
+        print("Plotting and saving average coverage per base and fragment count... finished")
 else:
     print("No CDS annotation, writing empty CDS_values file.")
     # TODO, add the same columns as the normal dataframe

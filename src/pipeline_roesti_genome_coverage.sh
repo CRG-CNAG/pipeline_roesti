@@ -13,7 +13,8 @@ USE_LOCAL_DISK=$5 # true or false
 SCRIPT_PATH=$6
 GENOME_BED_FILE=$7
 GENOME_CDS_BED_FILE=$8
-RRNA_BED_FILE=$9
+NREADS_BED=$9
+RRNA_BED_FILE=$10
 NTHREADS=1
 
 # Test variables
@@ -76,6 +77,7 @@ python3 "${SCRIPT_PATH}/pipeline_roesti_mean_coverage_per_CDS.py" \
     "${GENOME_CDS_BED_FILE}" \
     "${OUTPUT_PATH_LOCAL}" \
     "${SAMPLE}" \
+    "${NREADS_BED}" \
     "${RRNA_BED_FILE}"
 
 if [ "$USE_LOCAL_DISK" = true ] ; then
