@@ -188,10 +188,10 @@ if options.host == 'cluster':
     # cmd_source_bash_profile = ". {} && {} && cd {} &&".format(options.bash_profile,
     #                                                           str(loadDependenciesScriptPath),
     #                                                           str(outputPath))
-    cmd_source_bash_profile = ". {} && cd {} &&".format(str(loadDependenciesScriptPath),
+    cmd_source_bash_profile = ". \"{}\" && cd \"{}\" &&".format(str(loadDependenciesScriptPath),
                                                         str(outputPath))
 else:
-    cmd_source_bash_profile = "cd {} &&".format(str(outputPath))
+    cmd_source_bash_profile = "cd \"{}\" &&".format(str(outputPath))
 
 # Global bowtie2 options
 options.phredEncoding = 'phred33'
@@ -897,9 +897,9 @@ def align_seq(input_files,
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Align reads to genome" --n 3 && ' +\
           "bowtie2 " +\
-          " -x {} ".format(str(options.align_indexed_ref_genome_path)) +\
+          " -x \"{}\" ".format(str(options.align_indexed_ref_genome_path)) +\
           bowtieInputOptions +\
-          " -S {} ".format(sam_file) +\
+          " -S \"{}\" ".format(sam_file) +\
           " --{} ".format(options.phredEncoding) +\
           " --{} ".format(options.align_alignmentMode) +\
           " -N " + str(options.align_nMismatches) +\
@@ -989,12 +989,12 @@ def convert_sam_to_bam(sam_file,
     # hundred of thousands of temporary files, potentially collapsing the filesystem.
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Convert alignment file SAM to sorted BAM" --n 4 && ' +\
-          " samtools view -b -h -u " + sam_file +\
-          " | samtools sort -@ {:d} -m {:d}M -T {} -o {}".format(options.samtools_sort_nthread,
+          " samtools view -b -h -u \"{}\"".format(sam_file) +\
+          " | samtools sort -@ {:d} -m {:d}M -T \"{}\" -o \"{}\"".format(options.samtools_sort_nthread,
                                                                  options.samtools_sort_max_mem_per_thread,
                                                                  options.samtools_sort_tmp_dir,
                                                                  sorted_bam_file) +\
-          " && samtools index " + sorted_bam_file
+          " && samtools index \"{}\"".format(sorted_bam_file)
     with logger_mutex:
         logger.debug(cmd)
 
@@ -1082,15 +1082,15 @@ def filter_alignments(sorted_bam_file,
 
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Filter alignments by quality and size and report statistics" --n 5 && ' +\
-          " " + filter_script_filename +\
-          " " + sample_name +\
-          " " + input_path +\
-          " " + output_path +\
+          " \"{}\"".format(filter_script_filename) +\
+          " \"{}\"".format(sample_name) +\
+          " \"{}\"".format(input_path) +\
+          " \"{}\"".format(output_path) +\
           " " + str(options.filter_alignments_quality_threshold) +\
           " false" +\
-          " " + options.rRNA_bedfile +\
-          " " + options.rRNA_tRNA_bedfile +\
-          " " + str(scriptPath) +\
+          " \"{}\"".format(options.rRNA_bedfile) +\
+          " \"{}\"".format(options.rRNA_tRNA_bedfile) +\
+          " \"{}\"".format(str(scriptPath)) +\
           " " + ("true" if options.remove_rRNA else "false") +\
           " " + options.seq_end +\
           " " + str(filter_alignments_nthreads)
@@ -1157,7 +1157,7 @@ def filter_alignments(sorted_bam_file,
         nreads_file.write('nreads_raw,' + str(nreads_raw) + '\n')
         nreads_file.write('nreads_bed,' + str(nreads_bed) + '\n')
         nreads_file.write('nreads_bed_filtered,' + str(nreads_bed_filtered) + '\n')
-        nreads_file.write('nreads_bed_filtered/nreads_bed' + str(nreads_bed_filtered/nreads_bed) + '\n')
+        nreads_file.write('nreads_bed_filtered/nreads_bed,' + str(nreads_bed_filtered/nreads_bed) + '\n')
 
     with logger_mutex:
         logger.debug(task_name + " finished.")
@@ -1312,8 +1312,8 @@ pipelineDoc += infoStr
 # resulting in error at runtime.
 script_filename = str(scriptPath / 'pipeline_roesti_sort_CDS_BED.sh')
 cmd = cmd_source_bash_profile +\
-      " " + script_filename +\
-      " " + str(options.genomeCDSBedFile)
+      " \"{}\"".format(script_filename) +\
+      " \"{}\"".format(options.genomeCDSBedFile)
 print(cmd)
 cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
 cmd_output = re.sub(r'\\n','\n', str(cmd_output))
@@ -1378,17 +1378,17 @@ def genome_coverage_fragment_count(reads_bed_file,
 
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Compute genome coverage and fragment count of reads (mRNA)" --n 7 && ' +\
-          " " + filter_script_filename +\
-          " " + reads_bed_file +\
-          " " + sample_name +\
-          " " + input_path +\
-          " " + output_path +\
+          " \"{}\"".format(filter_script_filename) +\
+          " \"{}\"".format(reads_bed_file) +\
+          " \"{}\"".format(sample_name) +\
+          " \"{}\"".format(input_path) +\
+          " \"{}\"".format(output_path) +\
           " false" +\
-          " " + str(scriptPath) +\
-          " " + str(options.genomeBedFile) +\
-          " " + str(options.genomeCDSBedFile) +\
-          " " + str(nreads_bed) +\
-          " " + str(options.rRNA_bedfile)
+          " \"{}\"".format(str(scriptPath)) +\
+          " \"{}\"".format(str(options.genomeBedFile)) +\
+          " \"{}\"".format(str(options.genomeCDSBedFile)) +\
+          " \"{}\"".format(str(nreads_bed)) +\
+          " \"{}\"".format(str(options.rRNA_bedfile))
     with logger_mutex:
         logger.debug(cmd)
 

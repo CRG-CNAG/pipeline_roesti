@@ -57,7 +57,12 @@ fi
 
 if [[ ! -z "$9" ]]; then
     echo "Computing count per CDS for rRNA."
-    bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${RRNA_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed
+    # if rRNA bed file is empty
+    if [[ $(wc -l <"${RRNA_BED_FILE}") -ge 1 ]]; then
+        bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${RRNA_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed
+    else
+        echo "rRNA file ${RRNA_BED_FILE} is empty, skipping rRNA fragment count."
+    fi
 fi
 
 # Compute per base coverage

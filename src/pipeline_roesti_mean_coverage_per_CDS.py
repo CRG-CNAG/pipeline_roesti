@@ -89,8 +89,11 @@ elif method == 'memory':
     if Path(args.rRNA_bedfile).is_file():
         rRNADf = (pd.read_csv(args.rRNA_bedfile, header=None, names=bedCols, sep='\t')
                   .sort_values(['start', 'end']))
-        rRNADf['length'] = rRNADf['end'] - rRNADf['start']
-        rRNAList = rRNADf['name'].tolist()
+        if len(rRNADf) > 0:
+            rRNADf['length'] = rRNADf['end'] - rRNADf['start']
+            rRNAList = rRNADf['name'].tolist()
+        else:
+            rRNAList = []
     else:
         rRNADf = pd.DataFrame(columns=bedCols + ['length'])
         rRNAList = []

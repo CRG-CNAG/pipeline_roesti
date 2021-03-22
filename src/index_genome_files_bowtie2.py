@@ -26,9 +26,9 @@ class GenomeError(Exception):
 
 def sort_bed_file(filePath, cwdPath):
     # Sort the BED file following same order than bedtools
-    cmd = ("/users/lserrano/mweber/local/bin/sort {}".format(str(filePath)) +
-           " -k 1,1 -k 2,2n -k 3,3n > {}.sorted".format(str(filePath)) +
-           " && sleep 10 && mv {}.sorted {}".format(str(filePath), str(filePath)))
+    cmd = ("/users/lserrano/mweber/local/bin/sort \"{}\"".format(str(filePath)) +
+           " -k 1,1 -k 2,2n -k 3,3n > \"{}.sorted\"".format(str(filePath)) +
+           " && sleep 10 && mv \"{}.sorted\" \"{}\"".format(str(filePath), str(filePath)))
     cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=str(cwdPath), shell=True)
     return cmd_output
 
@@ -53,30 +53,28 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
 
             for genomeBio in genbankBioList:
                 
-                print(genomeBio.id, genomeBio.description)
+                fastaId = re.sub(r' ', r'_', genomeBio.id)
+                print("genomeBio_id:", genomeBio.id, "genome description:", genomeBio.description,
+                    "fasta_id:", fastaId)
                 
                 # Convert genome DNA sequence to FASTA nucleotide.
 
                 # Test if the genbank has a well-defined DNA sequence.
                 hasWellDefinedSeq = True
-                hasWellDefinedSeq = \
-                    not (
-                        (genomeBio.seq.count('N') / len(genomeBio.seq)) > 0.5 or
-                        genomeBio.seq == ''
-                    )
+                hasWellDefinedSeq = (not ((genomeBio.seq.count('N') / len(genomeBio.seq)) > 0.5
+                                          or genomeBio.seq == ''))
 
                 if not hasWellDefinedSeq:
                     print("######\nWARNING: Genbank file", genbankFilename, "contains an undefined sequence.\n######")
                     # We still record this genome annotation but we will require later to have the genome sequence
                     # in fasta format below
-                    genomeList.append({'genomeId':genomeBio.id, 'genomeSeq':None, 'genomeLength':0})
+                    genomeList.append({'genomeId':fastaId, 'genomeSeq':None, 'genomeLength':0})
                 else:
                     print("Converting DNA sequence from genbank to fasta.")
-                    fastaId = genomeBio.id
                     fastaDescription = genomeBio.description
                     genomeSeq = textwrap.fill(str(genomeBio.seq), width=70)
 
-                    genomeList.append({'genomeId':genomeBio.id, 'genomeSeq':str(genomeBio.seq),
+                    genomeList.append({'genomeId':fastaId, 'genomeSeq':str(genomeBio.seq),
                                        'genomeLength':len(genomeBio.seq)})
 
                     genomeFastaFile = str(outputPath / (fastaId + '.fna'))
@@ -103,6 +101,7 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
         for fastaFile in fastaFileList:
             for fastaBio in SeqIO.parse(fastaFile, format="fasta"):
                 fastaId = extract_fasta_id(fastaBio.id)
+                fastaId = re.sub(r' ', r'_', fastaId)
 
                 # Check if we already have the same genome in Genbank format
                 sameGenomeGenbank = [g for g in genomeList if g['genomeId'] == fastaId]
@@ -117,8 +116,9 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
                                 genomeList[i] = {'genomeId':fastaId, 'genomeSeq':str(fastaBio.seq), 'genomeLength':len(fastaBio.seq)}
                     else:
                         # If the genome already had a sequence, ERROR
-                        print("ERROR: the DNA sequence for fasta file", fastaFile, "has the same id as the DNA sequence",
-                              "already defined in the Genbank file.")
+                        raise ValueError("ERROR: the DNA sequence for fasta file", fastaFile,
+                                         "has the same id as the DNA sequence "
+                                         "already defined in the Genbank file.")
                         return
                 elif len(sameGenomeGenbank) > 1:
                     print("ERROR: multiple DNA sequences between fasta and genbank files that have the same id.")
@@ -214,7 +214,8 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
     # bowtie2Build = '/users/lserrano/mweber/Software/bowtie2-2.2.9/bowtie2-build'
     bowtie2Build = 'bowtie2-build'
     print("### Running bowtie2-build...")
-    cmd = bowtie2Build + ' ' + ",".join(fastaFileToBeIndexedList) + " " + outputName
+    cmd = (bowtie2Build + ' ' + ",".join(['\"{}\"'.format(f) for f in fastaFileToBeIndexedList]) +
+           " " + outputName)
     print(cmd)
     cmd = shlex.split(cmd)
     cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=str(outputPath))
