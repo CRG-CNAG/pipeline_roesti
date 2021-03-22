@@ -147,37 +147,24 @@ if len(avgCovDf) > 0:
         rRNAfragmentCountDf = pd.read_csv(filename, header=None, names=bedCols, sep='\t')
         rRNAfragmentCountDf.rename(columns={'value':'fragment_count'}, inplace=True)
         if len(rRNAfragmentCountDf) > 0:
-            rRNAfragmentCountDf['fragment_count_per_base'] = rRNAfragmentCountDf.apply(lambda x:
-                                                                                       (x['fragment_count'] /
-                                                                                        (x['end'] - x['start'])),
-                                                                                       axis=1)
-        fragmentCountDf = pd.concat([fragmentCountDf, rRNAfragmentCountDf], sort=False)
+            rRNAfragmentCountDf['fragment_count_per_base'] = \
+                rRNAfragmentCountDf.apply(lambda x: (x['fragment_count'] / (x['end'] - x['start'])), axis=1)
+            fragmentCountDf = pd.concat([fragmentCountDf, rRNAfragmentCountDf], sort=False)
     else:
         rRNAfragmentCountDf = None
-
 
     dataDf = pd.merge(avgCovDf, fragmentCountDf, on=['ref', 'name', 'start', 'end', 'strand', 'mapq'], how='outer')
     dataDf.rename(columns={'name':'id'}, inplace=True)
     dataDf.sort_index(inplace=True)
-
-    # We will compute also the same measure but removing all the rRNA counts
-    dataDf_noRRNA = dataDf[dataDf['id'].map(lambda x: x not in rRNAList)].copy()
-    print("dataDf_noRRNA.columns", dataDf_noRRNA.columns)
 
     # Compute fragment per kilobase per million fragments (FPKM)
     # here we should strictly take the total fragments that map to the genome, not the sum of the counted reads.
     # if there are overlapping features, this could be wrong.
     nFragmentTotal = float(args.nreads_bed)
     print("nFragmentTotal:", nFragmentTotal)
-    # nFragmentTotal = dataDf['fragment_count'].sum()
     if nFragmentTotal == 0:
         nFragmentTotal = np.nan
     dataDf['FPKM'] = dataDf['fragment_count']/((nFragmentTotal/1e6) * ((dataDf['end'] - dataDf['start'])/1e3))
-
-    nFragmentTotal = dataDf_noRRNA['fragment_count'].sum()
-    if nFragmentTotal == 0:
-        nFragmentTotal = np.nan
-    dataDf_noRRNA['FPKM_no_rRNA'] = dataDf_noRRNA['fragment_count']/((nFragmentTotal/1e6) * ((dataDf_noRRNA['end'] - dataDf_noRRNA['start'])/1e3))
 
     # Compute transcript per million (TMP)
     # TPM is just a way of normalizing by the total amount of transcripts.
@@ -191,25 +178,11 @@ if len(avgCovDf) > 0:
         fragmentPerBaseTot = np.nan
     dataDf['TPM (based on fragment count)'] = (1e6 * fragmentPerBase / fragmentPerBaseTot)
 
-    fragmentPerBase = dataDf_noRRNA['fragment_count']/(dataDf_noRRNA['end'] - dataDf_noRRNA['start'])
-    fragmentPerBaseTot = fragmentPerBase.sum()
-    if fragmentPerBaseTot == 0:
-        fragmentPerBaseTot = np.nan
-    dataDf_noRRNA['TPM (based on fragment count) no_rRNA'] = (1e6 * fragmentPerBase / fragmentPerBaseTot)
-
     # We also use average coverage to derive TPM.
     avgCovTot = dataDf['avg_coverage'].sum()
     if avgCovTot == 0:
         avgCovTot = np.nan
     dataDf['TPM (based on average coverage)'] = (1e6 * dataDf['avg_coverage'] / avgCovTot)
-
-    avgCovTot = dataDf_noRRNA['avg_coverage'].sum()
-    if avgCovTot == 0:
-        avgCovTot = np.nan
-    dataDf_noRRNA['TPM (based on average coverage) no_rRNA'] = (1e6 * dataDf_noRRNA['avg_coverage'] / avgCovTot)
-
-    colList = ['ref', 'id', 'start', 'end', 'strand', 'mapq'] + list(set(dataDf_noRRNA.columns) - set(dataDf.columns))
-    dataDf = pd.merge(dataDf, dataDf_noRRNA[colList], on=['ref', 'id', 'start', 'end', 'strand', 'mapq'], how='outer')
 
     # We switch to 1-based index
     dataDf['start'] = dataDf['start'] + 1
@@ -219,8 +192,6 @@ if len(avgCovDf) > 0:
     print("dataDf.columns", dataDf.columns)
     dataDf.to_csv(str(Path(args.output_path) / "{}.CDS_values.csv".format(args.sample_name)))
     dataDf['fragment_count < 100'] = dataDf['fragment_count'] < 100
-
-
 
     if False:
         # Draw correlation
@@ -248,10 +219,7 @@ if len(avgCovDf) > 0:
         print("Plotting and saving average coverage per base and fragment count... finished")
 else:
     print("No CDS annotation, writing empty CDS_values file.")
-    # TODO, add the same columns as the normal dataframe
     dataDf = pd.DataFrame(columns=['ref', 'start_1-based', 'end_1-based', 'id', 'mapq', 'strand',
                                    'avg_coverage', 'fragment_count', 'fragment_count_per_base', 'FPKM',
-                                   'TPM (based on fragment count)', 'TPM (based on average coverage)',
-                                   'FPKM_no_rRNA', 'TPM (based on average coverage) no_rRNA',
-                                   'TPM (based on fragment count) no_rRNA'])
+                                   'TPM (based on fragment count)', 'TPM (based on average coverage)'])
     dataDf.to_csv(str(Path(args.output_path) / "{}.CDS_values.csv".format(args.sample_name)))
