@@ -79,7 +79,7 @@ parser.add_argument('--no-trimming', dest='no_trimming', action='store_true',
                     help='Do not trim reads before alignment. By default bad quality bases are trimmmed from read ends.')
 parser.add_argument('--remove-rRNA', dest='remove_rRNA', action='store_true',
                     help='Remove reads that align to the rRNA.')
-parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=15, type=int,
+parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=0, type=int,
                     help='Filter out reads with alignment quality score MAPQ smaller than the threshold.')
 parser.add_argument('--indexed-ref-genome', dest='align_indexed_ref_genome_path', default='/users/lserrano/mweber/RNA-seq_data/bowtie2_indexed_genome/Mpn/NC_000912',
                     help="Path to the basename of the index for the reference genome built with bowtie2-build.")
@@ -1354,8 +1354,8 @@ def genome_coverage_fragment_count(reads_bed_file,
     # For some reason the formatter filtering does not work and we have to apply a regex again to choose the .bed file only.
     if len(reads_bed_file) != 1:
         reads_bed_file = [fn for fn in reads_bed_file if re.search(r'^(.+/)*(?P<SAMPLENAME>.+)\.filtered\.bed$', fn)][0]
-    # with logger_mutex:
-    #     logger.debug(task_name + ", filtered input file: " + reads_bed_file)
+    with logger_mutex:
+        logger.debug(task_name + ", filtered input file: " + reads_bed_file)
 
     nreads_filename = sample_name + '.filtered.bed.nreads'
     nreads_filepath = Path(input_path) / nreads_filename
@@ -1368,7 +1368,7 @@ def genome_coverage_fragment_count(reads_bed_file,
     if nreads_filepath.is_file():
         nreads_df = pd.read_csv(nreads_filepath, index_col=0, header=None)
         print("nreads_df:\n", nreads_df)
-        nreads_bed = nreads_df.loc['nreads_bed', 1]    # this is without removing the rRNA reads
+        nreads_bed = int(nreads_df.loc['nreads_bed', 1])    # this is without removing the rRNA reads
         print("nreads_bed:", nreads_bed)
     else:
         nreads = 10e6

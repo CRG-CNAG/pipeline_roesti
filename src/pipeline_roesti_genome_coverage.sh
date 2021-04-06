@@ -5,17 +5,30 @@ if [ $# -lt 7 ]
     exit 1
 fi
 
-BED_FILE=$1
-SAMPLE=$2
-INPUT_PATH=$3
-OUTPUT_PATH=$4
-USE_LOCAL_DISK=$5 # true or false
-SCRIPT_PATH=$6
-GENOME_BED_FILE=$7
-GENOME_CDS_BED_FILE=$8
-NREADS_BED=$9
-RRNA_BED_FILE=$10
+BED_FILE="${1}"
+SAMPLE="${2}"
+INPUT_PATH="${3}"
+OUTPUT_PATH="${4}"
+USE_LOCAL_DISK="${5}"
+SCRIPT_PATH="${6}"
+GENOME_BED_FILE="${7}"
+GENOME_CDS_BED_FILE="${8}"
+NREADS_BED="${9}"
+RRNA_BED_FILE="${10}"
 NTHREADS=1
+
+echo "Script pipeline_roesti_genome_coverage.sh, input variables:"
+echo "${BED_FILE}"
+echo "${SAMPLE}"
+echo "${INPUT_PATH}"
+echo "${OUTPUT_PATH}"
+echo "${USE_LOCAL_DISK}"
+echo "${SCRIPT_PATH}"
+echo "${GENOME_BED_FILE}"
+echo "${GENOME_CDS_BED_FILE}"
+echo "${NREADS_BED}"
+echo "${RRNA_BED_FILE}"
+echo "${NTHREADS}"
 
 # Test variables
 # $BED_FILE $SAMPLE $INPUT_PATH $OUTPUT_PATH $USE_LOCAL_DISK $SCRIPT_PATH bedfile.bed
@@ -34,12 +47,12 @@ if [ "$USE_LOCAL_DISK" = true ] ; then
     # Copy input file to local disk on node
     #cp ${INPUT_PATH}/${SAMPLE}_sorted.bam ${TMPDIR}/${SAMPLE}_sorted.bam
     echo "Copy done."
-    INPUT_PATH_LOCAL=${TMPDIR}
-    OUTPUT_PATH_LOCAL=${TMPDIR}
+    INPUT_PATH_LOCAL="${TMPDIR}"
+    OUTPUT_PATH_LOCAL="${TMPDIR}"
 else
     echo "Using normal filesystem for computations"
-    INPUT_PATH_LOCAL=${INPUT_PATH}
-    OUTPUT_PATH_LOCAL=${OUTPUT_PATH}
+    INPUT_PATH_LOCAL="${INPUT_PATH}"
+    OUTPUT_PATH_LOCAL="${OUTPUT_PATH}"
 fi
 
 # Run only if argument GENOME_CDS_BED_FILE is given
@@ -52,14 +65,16 @@ if [[ ! -z "$8" ]]; then
     #       By default, overlaps are reported without respect to strand.
     # -F    Minimum overlap required as a fraction of B. Default is 1E-9 (i.e., 1bp).
     echo "Computing count per CDS."
-    bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${GENOME_CDS_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed
+    echo "command line:"
+    echo "${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
+    bedtools intersect -c -s -F 0.5 -sorted -g "${GENOME_BED_FILE}" -a "${GENOME_CDS_BED_FILE}" -b "${BED_FILE}" > "${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
 fi
 
 if [[ ! -z "$9" ]]; then
     echo "Computing count per CDS for rRNA."
     # if rRNA bed file is empty
     if [[ $(wc -l <"${RRNA_BED_FILE}") -ge 1 ]]; then
-        bedtools intersect -c -s -F 0.5 -sorted -g ${GENOME_BED_FILE} -a ${RRNA_BED_FILE} -b ${BED_FILE} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed
+        bedtools intersect -c -s -F 0.5 -sorted -g "${GENOME_BED_FILE}" -a "${RRNA_BED_FILE}" -b "${BED_FILE}" > "${OUTPUT_PATH_LOCAL}/${SAMPLE}.rRNA_fragment_count.bed"
     else
         echo "rRNA file ${RRNA_BED_FILE} is empty, skipping rRNA fragment count."
     fi
@@ -67,11 +82,11 @@ fi
 
 # Compute per base coverage
 echo "Computing per base coverage for plus strand."
-bedtools genomecov -i ${BED_FILE} -g ${GENOME_BED_FILE} -d -strand + \
-> ${OUTPUT_PATH_LOCAL}/${SAMPLE}.strandp_coverage.bed
+bedtools genomecov -i "${BED_FILE}" -g "${GENOME_BED_FILE}" -d -strand + \
+> "${OUTPUT_PATH_LOCAL}/${SAMPLE}.strandp_coverage.bed"
 echo "Computing per base coverage for minus strand."
-bedtools genomecov -i ${BED_FILE} -g ${GENOME_BED_FILE} -d -strand - \
-> ${OUTPUT_PATH_LOCAL}/${SAMPLE}.strandm_coverage.bed
+bedtools genomecov -i "${BED_FILE}" -g "${GENOME_BED_FILE}" -d -strand - \
+> "${OUTPUT_PATH_LOCAL}/${SAMPLE}.strandm_coverage.bed"
 
 # Compute total integral of per-base coverage for each CDS
 # ... python script
