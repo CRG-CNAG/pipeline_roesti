@@ -1401,10 +1401,14 @@ def genome_coverage_fragment_count(reads_bed_file,
             job_queue_name = long_queue
         # Large number of reads might require a fairly large memory for the bedtools intersect,
         # even if the reads are sorted. Last example case was 55M reads and required 16G of memory.
-        if nreads > 30e6:
-            memory = '24G'
-        else:
-            memory = '16G'
+        # small benchmark test for bacterial genome M. feriruminatoris, using /usr/bin/time -v
+        # that reports maximum resident memory (approximative):
+        # 100k reads, 57M
+        # 1M reads, 530M
+        # 5M reads, 2670M
+        # 20M reads, 10'600M
+        # approximate memory usage is 550M per 1M reads
+        memory = (nreads/1e6)*600 + 2000
         job_other_options = " -pe smp " + str(1) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\

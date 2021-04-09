@@ -5,16 +5,16 @@ if [ $# -lt 7 ]
     exit 1
 fi
 
-BED_FILE="${1}"
-SAMPLE="${2}"
-INPUT_PATH="${3}"
-OUTPUT_PATH="${4}"
-USE_LOCAL_DISK="${5}"
-SCRIPT_PATH="${6}"
-GENOME_BED_FILE="${7}"
-GENOME_CDS_BED_FILE="${8}"
-NREADS_BED="${9}"
-RRNA_BED_FILE="${10}"
+BED_FILE=${1}
+SAMPLE=${2}
+INPUT_PATH=${3}
+OUTPUT_PATH=${4}
+USE_LOCAL_DISK=${5}
+SCRIPT_PATH=${6}
+GENOME_BED_FILE=${7}
+GENOME_CDS_BED_FILE=${8}
+NREADS_BED=${9}
+RRNA_BED_FILE=${10}
 NTHREADS=1
 
 echo "Script pipeline_roesti_genome_coverage.sh, input variables:"
@@ -66,9 +66,10 @@ if [[ ! -z "$8" ]]; then
     # -F    Minimum overlap required as a fraction of B. Default is 1E-9 (i.e., 1bp).
     echo "Computing count per CDS."
     echo "command line:"
-    echo "${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
+    echo "bedtools intersect -c -s -F 0.5 -sorted -g ""${GENOME_BED_FILE}"" -a ""${GENOME_CDS_BED_FILE}"" -b ""${BED_FILE}"" > ""${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
     bedtools intersect -c -s -F 0.5 -sorted -g "${GENOME_BED_FILE}" -a "${GENOME_CDS_BED_FILE}" -b "${BED_FILE}" > "${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
 fi
+exit 1
 
 if [[ ! -z "$9" ]]; then
     echo "Computing count per CDS for rRNA."
