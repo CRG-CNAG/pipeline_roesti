@@ -69,7 +69,6 @@ if [[ ! -z "$8" ]]; then
     echo "bedtools intersect -c -s -F 0.5 -sorted -g ""${GENOME_BED_FILE}"" -a ""${GENOME_CDS_BED_FILE}"" -b ""${BED_FILE}"" > ""${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
     bedtools intersect -c -s -F 0.5 -sorted -g "${GENOME_BED_FILE}" -a "${GENOME_CDS_BED_FILE}" -b "${BED_FILE}" > "${OUTPUT_PATH_LOCAL}/${SAMPLE}.CDS_fragment_count.bed"
 fi
-exit 1
 
 if [[ ! -z "$9" ]]; then
     echo "Computing count per CDS for rRNA."

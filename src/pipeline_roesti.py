@@ -1408,11 +1408,13 @@ def genome_coverage_fragment_count(reads_bed_file,
         # 5M reads, 2670M
         # 20M reads, 10'600M
         # approximate memory usage is 550M per 1M reads
-        memory = (nreads/1e6)*600 + 2000
+        memory = int((nreads/1e6)*600 + 2000)
+        with logger_mutex:
+            logger.debug("Launching job, virtual_free={:d}M".format(memory))
         job_other_options = " -pe smp " + str(1) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l virtual_free={}".format(memory)
+                            " -l virtual_free={:d}M".format(memory)
 
         # ruffus.drmaa_wrapper.run_job
         stdout_res, stderr_res = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
