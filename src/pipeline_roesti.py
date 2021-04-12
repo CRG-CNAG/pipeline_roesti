@@ -1197,10 +1197,10 @@ iTask += 1
 task_name = 'genome_coverage_fragment_count'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
 # Only run this analysis for rna data type
-if options.library_type in ['rna-seq', 'hydro-trna-seq']:
+if options.library_type in ['rna-seq', 'hydro-trna-seq', 'ribo-seq']:
     task_path.mkdir(exist_ok=True)
     finalResultsPath = task_path
-@active_if(options.library_type in ['rna-seq', 'hydro-trna-seq'])
+@active_if(options.library_type in ['rna-seq', 'hydro-trna-seq', 'ribo-seq'])
 @follows(filter_alignments, mkdir(str(task_path)))
 @transform(filter_alignments,
 
