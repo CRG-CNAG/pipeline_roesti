@@ -154,8 +154,7 @@ if len(avgCovDf) > 0:
         rRNAfragmentCountDf = None
 
     dataDf = pd.merge(avgCovDf, fragmentCountDf, on=['ref', 'name', 'start', 'end', 'strand', 'mapq'], how='outer')
-    dataDf.rename(columns={'name':'id'}, inplace=True)
-    dataDf.sort_index(inplace=True)
+    dataDf = dataDf.rename(columns={'name':'id'}).sort_index().drop_duplicates()
 
     # Compute fragment per kilobase per million fragments (FPKM)
     # here we should strictly take the total fragments that map to the genome, not the sum of the counted reads.
