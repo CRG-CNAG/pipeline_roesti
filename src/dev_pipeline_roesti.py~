@@ -21,8 +21,12 @@ from glob import glob
 from itertools import islice
 import datetime
 import subprocess
+import requests
+import json
 import pandas as pd
-from send_socket_message import update_analysis
+import sys
+
+from dev_send_socket_message import update_analysis
 
 from index_genome_files_bowtie2 import index_genome_files_bowtie2
 from mwTools.general import glob_file_list
@@ -33,7 +37,7 @@ from mwTools.general import open_by_suffix
 pipeline_name = 'pipeline_roesti'
 pipelineDoc = pipeline_name + """
 
-Pipeline to analyze RNA-seq data.
+Pipeline to analyze RNA-seq data from RNA-seq and Ribo-seq (ribosome profiling) experiments.
 Python 3.5 script. |
 
 Author: Marc Weber |
@@ -67,7 +71,7 @@ parser.add_argument('--run-locally', dest='run_locally', action='store_true',
                     help='Run the pipeline on local machine (as opposed to submitting jobs to the cluster). Note that multiple threads could be used.')
 parser.add_argument('--pipeline-name', dest='pipeline_name', default=pipeline_name,
                     help='Name of the pipeline. Important: the history of up-to-date files is kept in a database of the same name in the output folder, .pipeline_roesti.ruffus_history.sqlite.')
-parser.add_argument('--library-type', dest='library_type', default='rna-seq', choices=['ribo-seq', 'rna-seq', 'hydro-trna-seq'],
+parser.add_argument('--library-type', dest='library_type', default='rna-seq', choices=['ribo-seq', 'rna-seq'],
                     help="Type of RNA-seq library. In ribosome profiling data analysis, additional fragment filtering is applied in order to select ribosome footprints.")
 parser.add_argument('--seq-end', dest='seq_end', default='paired-end', choices=['single-end', 'paired-end'],
                     help="Single-end or paired-end sequencing data.")
@@ -79,7 +83,7 @@ parser.add_argument('--no-trimming', dest='no_trimming', action='store_true',
                     help='Do not trim reads before alignment. By default bad quality bases are trimmmed from read ends.')
 parser.add_argument('--remove-rRNA', dest='remove_rRNA', action='store_true',
                     help='Remove reads that align to the rRNA.')
-parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=0, type=int,
+parser.add_argument('--align-quality-threshold', dest='filter_alignments_quality_threshold', default=15, type=int,
                     help='Filter out reads with alignment quality score MAPQ smaller than the threshold.')
 parser.add_argument('--indexed-ref-genome', dest='align_indexed_ref_genome_path', default='/users/lserrano/mweber/RNA-seq_data/bowtie2_indexed_genome/Mpn/NC_000912',
                     help="Path to the basename of the index for the reference genome built with bowtie2-build.")
@@ -134,7 +138,6 @@ fastqFiles = sorted(list(set(fastqFiles)))
 fastqPath = Path(fastqFiles[0]).parent
 print("fastqFiles:", fastqFiles)
 
-
 def group_paired_end_fastq_files(fastqFiles):
     """Group paired-end fastq files together"""
     fastqFilesPE = []
@@ -188,10 +191,10 @@ if options.host == 'cluster':
     # cmd_source_bash_profile = ". {} && {} && cd {} &&".format(options.bash_profile,
     #                                                           str(loadDependenciesScriptPath),
     #                                                           str(outputPath))
-    cmd_source_bash_profile = ". \"{}\" && cd \"{}\" &&".format(str(loadDependenciesScriptPath),
+    cmd_source_bash_profile = ". {} && cd {} &&".format(str(loadDependenciesScriptPath),
                                                         str(outputPath))
 else:
-    cmd_source_bash_profile = "cd \"{}\" &&".format(str(outputPath))
+    cmd_source_bash_profile = "cd {} &&".format(str(outputPath))
 
 # Global bowtie2 options
 options.phredEncoding = 'phred33'
@@ -211,12 +214,6 @@ elif options.library_type == 'rna-seq':
         options.trim_adapter_seq_forward = 'AGATCGGAAGAGCACACGTCT'
     if options.trim_adapter_seq_reverse == '':
         options.trim_adapter_seq_reverse = 'AGATCGGAAGAGCACACGTCT'
-elif options.library_type == 'hydro-trna-seq':
-    options.trim_adapter_min_length = 10
-    if options.trim_adapter_seq_forward == '':
-        options.trim_adapter_seq_forward = 'AGATCGGAAGAGCACACGTCT'
-    if options.trim_adapter_seq_reverse == '':
-        options.trim_adapter_seq_reverse = 'AGATCGGAAGAGCACACGTCT'
 
 ## align
 options.align_alignmentMode = 'end-to-end'
@@ -225,26 +222,20 @@ options.align_alignmentMode = 'end-to-end'
 # -D 20 -R 3 -N 0 -L 20 -i S,1,0.50
 if options.library_type == 'ribo-seq':
     options.align_nMismatches = 1
-    options.align_seedLength = 16
-    options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
+    options.align_seedLength = 12
 elif options.library_type == 'rna-seq':
     options.align_nMismatches = 0
     options.align_seedLength = 20
-    options.align_seedInterval = 'S,1,1.15'    # mode sensitive. For read length of 50, seed interval is 1 + 1.15*sqrt(50) = 9.13
-elif options.library_type == 'hydro-trna-seq':
-    options.align_nMismatches = 1
-    options.align_seedLength = 16
-    options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
+options.align_seedInterval = 'S,1,1.15'    # mode sensitive. For read length of 50, seed interval is 1 + 1.15*sqrt(50) = 9.13
+options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
 
 options.align_maxAlignAttempts = 20    # very sensitive: -D 20
 options.align_maxReSeed = 3    # very sensitive: -R 3
 
 if options.library_type == 'ribo-seq':
-    options.align_maxInsertLength = 200
+    options.align_maxInsertLength = 400
 elif options.library_type == 'rna-seq':
     options.align_maxInsertLength = 1200     # This is the theoretical maximum fragment length in the library preparation
-elif options.library_type == 'hydro-trna-seq':
-    options.align_maxInsertLength = 200
 options.align_max_reported_alignments = 0    # set to 0 to deactivate the option
 
 ## convert_sam_to_bam
@@ -252,12 +243,12 @@ if run_locally:
     options.samtools_sort_tmp_dir = '.'
 else:
     options.samtools_sort_tmp_dir = '$TMPDIR'
-options.samtools_sort_max_mem = 28000    # M
+options.samtools_sort_max_mem = 24000    # M
 options.samtools_sort_nthread = 4
 # Note: maximum memory per thread **has to be an integer**, otherwise it is interpreted as bytes
 # Note: we have to allocate some free memory for the main samtools thread, probably for the
 # file merging, otherwise the job will reach memory limit.
-options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 7000) / options.samtools_sort_nthread)
+options.samtools_sort_max_mem_per_thread = int((options.samtools_sort_max_mem - 6000) / options.samtools_sort_nthread)
 
 ## filter_alignments
 # ...
@@ -293,7 +284,7 @@ if writeTestFiles:
         if len(fastqFilesPE) == 0:
             raise ValueError("No fastq file pair has been found within the list of input files. Check that the filenames are identical for read1 and read2.")
         exampleFiles = fastqFilesPE[0]
-    
+
     for i, fastqFilename in enumerate(exampleFiles):
         print("Writing test files from head of file: ",fastqFilename)
         with open_by_suffix(str(fastqFilename)) as fastqFile:
@@ -356,14 +347,14 @@ def plot_trimmed_reads_length_dist(summaryFilePath):
                 length = int(regexSearch.group(1))
                 counts = int(regexSearch.group(2))
                 histData.append((length, counts))
-    
+
     x, y = zip(*histData)
     fig = plt.figure(figsize=(8,6))
     ax = fig.add_subplot(111)
     ax.plot(x, y)
     ax.set_xlabel('length trimmed read (insert)')
     fig.savefig(summaryFilePath + '.length_dist.png', dpi=200)
-    
+
     return histData
 
 
@@ -401,13 +392,14 @@ iTask = 0
 
 #############################################################################
 
-cmdJobRunningRequest = '{} --analysisId {} --status 1 {}'.format(str(scriptPath / 'send_socket_message.py'),
-                                                                 options.analysisId,
-                                                                 '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+cmdJobRunningRequest = '{} --analysisId {} --status 1 {}'.format(str(scriptPath / 'dev_send_socket_message.py'),
+                                                                           options.analysisId,
+                                                                           '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
 
-cmdProgressRequest = '{} --analysisId {} --type 1 {} '.format(str(scriptPath / 'send_socket_message.py'),
-                                                              options.analysisId,
-                                                              '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+cmdProgressRequest = '{} --analysisId {} --type 1 {} '.format(str(scriptPath / 'dev_send_socket_message.py'),
+                                                                          options.analysisId,
+                                                                          '--sendMessageToWebServer' if options.sendMessageToWebServer else '')
+
 
 #############################################################################
 
@@ -429,7 +421,7 @@ if computeIndexedGenome:
 
     genbankFileList = glob_file_list(options.refGenbank)
     fastaFileList = glob_file_list(options.refFasta)
-    
+
     with logger_mutex:
         genbankFileListPrint = genbankFileList if genbankFileList is not None else [""]
         fastaFileListPrint = fastaFileList if fastaFileList is not None else [""]
@@ -437,7 +429,7 @@ if computeIndexedGenome:
         logger.debug("fastaFiles:\n" + "\n".join(fastaFileListPrint))
 
     refOutputDir = options.refOutputDir
-    
+
     indexedGenomePath = index_genome_files_bowtie2(genbankFileList=genbankFileList, fastaFileList=fastaFileList,
                                                    outputName=options.refOutputName, outputDir=refOutputDir)
     with logger_mutex:
@@ -471,11 +463,11 @@ infoStr += "a2 " + options.trim_adapter_seq_reverse + "\n\n"
 infoStr += "-threads " + str(options.nThreads) + "\n\n"
 pipelineDoc += infoStr
 
-intermediateTaskPathList = []
+taskPathList = []
 iTask += 1
 task_name = "trim_adapter_PE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-intermediateTaskPathList.append(task_path)
+taskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for paired-end library type
 @active_if(options.seq_end == 'paired-end')
@@ -578,7 +570,6 @@ def trim_adapter_PE_reads(input_files,
             logger.debug(std_err_string)
 
         wait_for_file(summaryFilename, sleepTimeFilesystem)
-        print("summary file found", summaryFilename)
 
         # Extract nb of valid reads from the summary file and write to a small metadata file
         with open(summaryFilename,'r') as summary_file:
@@ -638,7 +629,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = "trim_adapter_SE_reads"
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-intermediateTaskPathList.append(task_path)
+taskPathList.append(task_path)
 @follows(mkdir(str(task_path)))
 # Only run this analysis for single-end library type
 @active_if(options.seq_end == 'single-end')
@@ -688,7 +679,7 @@ def trim_adapter_SE_reads(input_file,
         cmd = (cmd_source_bash_profile +
                cmdJobRunningRequest + " && " +
                cmdProgressRequest + '--progress "Trim adapter SE reads" --n 2 && ' +\
-               " skewer " +
+               " skewer-0.2.2-linux-x86_64 " +
                " " + input_file +
                " -x " + options.trim_adapter_seq_forward +
                " -l " + str(options.trim_adapter_min_length) +
@@ -760,7 +751,7 @@ In the case of ribosome profiling, footprints are very short inserts. Sensitive 
 
 Software: bowtie2-align-s version 2.2.9
 
-Parameters used: 
+Parameters used:
 
 """
 
@@ -833,7 +824,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'align_seq'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-intermediateTaskPathList.append(task_path)
+taskPathList.append(task_path)
 if options.seq_end == 'single-end':
     regexInputFiles = r'^(.+/)*(?P<SAMPLENAME>.+)\.trimmed\.fastq(\.gz)?.*'
 elif options.seq_end == 'paired-end':
@@ -870,7 +861,7 @@ def align_seq(input_files,
         read1 = input_files[0]
         read2 = input_files[1]
         nValidReadsFilename = input_files[2]
-        
+
     with open(nValidReadsFilename, 'r') as nreadsFile:
         nreads = int(re.match(r'^([0-9.]+).*', nreadsFile.readline()).group(1))
     with logger_mutex:
@@ -898,9 +889,9 @@ def align_seq(input_files,
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Align reads to genome" --n 3 && ' +\
           "bowtie2 " +\
-          " -x \"{}\" ".format(str(options.align_indexed_ref_genome_path)) +\
+          " -x {} ".format(str(options.align_indexed_ref_genome_path)) +\
           bowtieInputOptions +\
-          " -S \"{}\" ".format(sam_file) +\
+          " -S {} ".format(sam_file) +\
           " --{} ".format(options.phredEncoding) +\
           " --{} ".format(options.align_alignmentMode) +\
           " -N " + str(options.align_nMismatches) +\
@@ -967,7 +958,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'convert_sam_to_bam'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-intermediateTaskPathList.append(task_path)
+taskPathList.append(task_path)
 @follows(align_seq, mkdir(str(task_path)))
 @transform(align_seq,
 
@@ -990,12 +981,12 @@ def convert_sam_to_bam(sam_file,
     # hundred of thousands of temporary files, potentially collapsing the filesystem.
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Convert alignment file SAM to sorted BAM" --n 4 && ' +\
-          " samtools view -b -h -u \"{}\"".format(sam_file) +\
-          " | samtools sort -@ {:d} -m {:d}M -T \"{}\" -o \"{}\"".format(options.samtools_sort_nthread,
+          " samtools view -b -h -u " + sam_file +\
+          " | samtools sort -@ {:d} -m {:d}M -T {} -o {}".format(options.samtools_sort_nthread,
                                                                  options.samtools_sort_max_mem_per_thread,
                                                                  options.samtools_sort_tmp_dir,
                                                                  sorted_bam_file) +\
-          " && samtools index \"{}\"".format(sorted_bam_file)
+          " && samtools index " + sorted_bam_file
     with logger_mutex:
         logger.debug(cmd)
 
@@ -1052,7 +1043,7 @@ pipelineDoc += infoStr
 iTask += 1
 task_name = 'filter_alignments'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
-intermediateTaskPathList.append(task_path)
+taskPathList.append(task_path)
 @follows(convert_sam_to_bam, mkdir(str(task_path)))
 @transform(convert_sam_to_bam,
 
@@ -1076,22 +1067,22 @@ def filter_alignments(sorted_bam_file,
                       input_path,
                       output_path,
                       task_name, logger, logger_mutex):
-       
+
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_filter_script.sh')
     filter_alignments_nthreads = min(options.nThreads, 8)
 
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Filter alignments by quality and size and report statistics" --n 5 && ' +\
-          " \"{}\"".format(filter_script_filename) +\
-          " \"{}\"".format(sample_name) +\
-          " \"{}\"".format(input_path) +\
-          " \"{}\"".format(output_path) +\
+          " " + filter_script_filename +\
+          " " + sample_name +\
+          " " + input_path +\
+          " " + output_path +\
           " " + str(options.filter_alignments_quality_threshold) +\
           " false" +\
-          " \"{}\"".format(options.rRNA_bedfile) +\
-          " \"{}\"".format(options.rRNA_tRNA_bedfile) +\
-          " \"{}\"".format(str(scriptPath)) +\
+          " " + options.rRNA_bedfile +\
+          " " + options.rRNA_tRNA_bedfile +\
+          " " + str(scriptPath) +\
           " " + ("true" if options.remove_rRNA else "false") +\
           " " + options.seq_end +\
           " " + str(filter_alignments_nthreads)
@@ -1158,7 +1149,135 @@ def filter_alignments(sorted_bam_file,
         nreads_file.write('nreads_raw,' + str(nreads_raw) + '\n')
         nreads_file.write('nreads_bed,' + str(nreads_bed) + '\n')
         nreads_file.write('nreads_bed_filtered,' + str(nreads_bed_filtered) + '\n')
-        nreads_file.write('nreads_bed_filtered/nreads_bed,' + str(nreads_bed_filtered/nreads_bed) + '\n')
+        nreads_file.write('nreads_bed_filtered/nreads_bed' + str(nreads_bed_filtered/nreads_bed) + '\n')
+
+    with logger_mutex:
+        logger.debug(task_name + " finished.")
+
+
+
+#############################################################################
+#############################################################################
+# FROM HERE WE FORK THE PIPELINE INTO TWO DIRECTIONS FOR RIBO-SEQ OR RNA-SEQ
+#############################################################################
+#############################################################################
+
+
+
+#############################################################################
+infoStr = "\n\n#############################\n"
+infoStr += """
+Extract ribosome footprints inserts by size.
+
+Software: samtools Version: 1.3.1 (using htslib 1.3.1)
+Software: bedtools v2.26.0
+
+"""
+pipelineDoc += infoStr
+
+
+iTask += 1
+task_name = 'extract_footprints'
+task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
+# Only run this analysis for ribo-seq data type
+if options.library_type == 'ribo-seq':
+    task_path.mkdir(exist_ok=True)
+    finalResultsPath = task_path
+@active_if(options.library_type == 'ribo-seq')
+# @follows(filter_alignments, mkdir(str(task_path)))
+@transform(filter_alignments,
+
+           # BED file of paired-end reads (inserts), nreads file
+           formatter(r'^(.+/)*(?P<SAMPLENAME>.+)\.filtered\.bed.*$'),
+
+           # output file
+           str(task_path) + "/{SAMPLENAME[0]}.footprints_narrow.bed",
+
+           # Sample name
+           "{SAMPLENAME[0]}",
+           # Input path
+           "{path[0]}",
+           # Output path
+           str(task_path),
+           task_name, logger, logger_mutex)
+def extract_footprints(input_files,
+                       footprints_file,
+                       sample_name,
+                       input_path,
+                       output_path,
+                       task_name, logger, logger_mutex):
+
+    if re.match(r'^(.+/)*(.+)\.bed$', input_files[0]):
+        reads_bed_file = input_files[0]
+    if re.match(r'^(.+/)*(.+)\.bed$', input_files[1]):
+        reads_bed_file = input_files[1]
+
+    filter_script_filename = str(scriptPath / 'pipeline_roesti_extract_footprints.sh')
+    extract_footprints_nthreads = min(options.nThreads, 4)
+
+    cmd = cmd_source_bash_profile +\
+          cmdProgressRequest + '--progress "Extract ribosome footprints inserts by size" --n 6 && ' +\
+          " " + filter_script_filename +\
+          " " + sample_name +\
+          " " + input_path +\
+          " " + output_path +\
+          " false" +\
+          " " + str(scriptPath) +\
+          " " + str(options.genomeBedFile) +\
+          " " + str(extract_footprints_nthreads)
+    with logger_mutex:
+        logger.debug(cmd)
+
+    try:
+        stdout_res, stderr_res = "",""
+        walltime = datetime.timedelta(hours=20)
+        if walltime < datetime.timedelta(hours=6):
+            job_queue_name = short_queue
+        else:
+            job_queue_name = long_queue
+        job_other_options = " -pe smp " + str(extract_footprints_nthreads) +\
+                            " -q " + job_queue_name +\
+                            " -l h_rt=" + printTimeDelta(walltime) +\
+                            " -l h_vmem=16G,virtual_free=16G"
+
+        # ruffus.drmaa_wrapper.run_job
+        stdout_res, stderr_res = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
+                                         drmaa_session=drmaa_session, run_locally=run_locally,
+                                         job_other_options=job_other_options, retain_job_scripts=False)
+
+        std_err_string = "".join([line.decode() if isinstance(line, bytes) else line for line in stderr_res])
+        with logger_mutex:
+            logger.debug(std_err_string)
+
+    # relay all the stdout, stderr, drmaa output to diagnose failures
+    except error_drmaa_job as err:
+        if options.sendMessageToWebServer:
+            update_analysis(options.analysisId, -1)
+        raise Exception("\n".join(map(str,["Failed to run:" + cmd, err, stdout_res, stderr_res])))
+
+
+    nreads_filename = output_path + '/' + sample_name + '.footprints_wide.nreads'
+    wait_for_file(nreads_filename, sleepTimeFilesystem)
+    with open(nreads_filename) as nreads_file:
+        nreads_footprints_wide = int(next(nreads_file).split()[0])
+    os.remove(nreads_filename)
+
+    nreads_filename = output_path + '/' + sample_name + '.footprints_narrow.nreads'
+    wait_for_file(nreads_filename, sleepTimeFilesystem)
+    with open(nreads_filename) as nreads_file:
+        nreads_footprints_narrow = int(next(nreads_file).split()[0])
+    os.remove(nreads_filename)
+
+    wait_for_file(nreads_bed_file, sleepTimeFilesystem)
+    with open(nreads_bed_file) as nreads_file:
+        nreads_bed_filtered = int(next(nreads_file).split()[0])
+
+    # Write percentage of reads passing the filter in CSV file
+    with open(output_path + '/' + sample_name + '.footprints_nreads','w') as nreads_file:
+        nreads_file.write('nreads_footprints_wide,' + str(nreads_footprints_wide) + '\n')
+        nreads_file.write('nreads_footprints_wide/nreads_bed_filtered,' + str(nreads_footprints_wide/nreads_bed_filtered) + '\n')
+        nreads_file.write('nreads_footprints_narrow,' + str(nreads_footprints_narrow) + '\n')
+        nreads_file.write('nreads_footprints_narrow/nreads_bed_filtered,' + str(nreads_footprints_narrow/nreads_bed_filtered) + '\n')
 
     with logger_mutex:
         logger.debug(task_name + " finished.")
@@ -1185,8 +1304,8 @@ pipelineDoc += infoStr
 # resulting in error at runtime.
 script_filename = str(scriptPath / 'pipeline_roesti_sort_CDS_BED.sh')
 cmd = cmd_source_bash_profile +\
-      " \"{}\"".format(script_filename) +\
-      " \"{}\"".format(options.genomeCDSBedFile)
+      " " + script_filename +\
+      " " + str(options.genomeCDSBedFile)
 print(cmd)
 cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
 cmd_output = re.sub(r'\\n','\n', str(cmd_output))
@@ -1197,10 +1316,10 @@ iTask += 1
 task_name = 'genome_coverage_fragment_count'
 task_path = pipeline_path / "Task{:02d}_{}".format(iTask, task_name)
 # Only run this analysis for rna data type
-if options.library_type in ['rna-seq', 'hydro-trna-seq']:
+if options.library_type == 'rna-seq':
     task_path.mkdir(exist_ok=True)
     finalResultsPath = task_path
-@active_if(options.library_type in ['rna-seq', 'hydro-trna-seq'])
+@active_if(options.library_type == 'rna-seq')
 @follows(filter_alignments, mkdir(str(task_path)))
 @transform(filter_alignments,
 
@@ -1227,41 +1346,32 @@ def genome_coverage_fragment_count(reads_bed_file,
     # For some reason the formatter filtering does not work and we have to apply a regex again to choose the .bed file only.
     if len(reads_bed_file) != 1:
         reads_bed_file = [fn for fn in reads_bed_file if re.search(r'^(.+/)*(?P<SAMPLENAME>.+)\.filtered\.bed$', fn)][0]
-    with logger_mutex:
-        logger.debug(task_name + ", filtered input file: " + reads_bed_file)
+    # with logger_mutex:
+    #     logger.debug(task_name + ", filtered input file: " + reads_bed_file)
 
     nreads_filename = sample_name + '.filtered.bed.nreads'
     nreads_filepath = Path(input_path) / nreads_filename
     if nreads_filepath.is_file():
         with nreads_filepath.open() as f:
             nreads = int(next(f).split()[0])
-
-    nreads_filename = sample_name + '.nreads'
-    nreads_filepath = Path(input_path) / nreads_filename
-    if nreads_filepath.is_file():
-        nreads_df = pd.read_csv(nreads_filepath, index_col=0, header=None)
-        print("nreads_df:\n", nreads_df)
-        nreads_bed = int(nreads_df.loc['nreads_bed', 1])    # this is without removing the rRNA reads
-        print("nreads_bed:", nreads_bed)
     else:
         nreads = 10e6
-    print("sample:", sample_name, "nreads:", nreads)
+    print("sample", sample_name, "nreads", nreads)
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_genome_coverage.sh')
 
     cmd = cmd_source_bash_profile +\
           cmdProgressRequest + '--progress "Compute genome coverage and fragment count of reads (mRNA)" --n 7 && ' +\
-          " \"{}\"".format(filter_script_filename) +\
-          " \"{}\"".format(reads_bed_file) +\
-          " \"{}\"".format(sample_name) +\
-          " \"{}\"".format(input_path) +\
-          " \"{}\"".format(output_path) +\
+          " " + filter_script_filename +\
+          " " + reads_bed_file +\
+          " " + sample_name +\
+          " " + input_path +\
+          " " + output_path +\
           " false" +\
-          " \"{}\"".format(str(scriptPath)) +\
-          " \"{}\"".format(str(options.genomeBedFile)) +\
-          " \"{}\"".format(str(options.genomeCDSBedFile)) +\
-          " \"{}\"".format(str(nreads_bed)) +\
-          " \"{}\"".format(str(options.rRNA_bedfile))
+          " " + str(scriptPath) +\
+          " " + str(options.genomeBedFile) +\
+          " " + str(options.genomeCDSBedFile) +\
+          " " + str(options.rRNA_bedfile)
     with logger_mutex:
         logger.debug(cmd)
 
@@ -1274,20 +1384,14 @@ def genome_coverage_fragment_count(reads_bed_file,
             job_queue_name = long_queue
         # Large number of reads might require a fairly large memory for the bedtools intersect,
         # even if the reads are sorted. Last example case was 55M reads and required 16G of memory.
-        # small benchmark test for bacterial genome M. feriruminatoris, using /usr/bin/time -v
-        # that reports maximum resident memory (approximative):
-        # 100k reads, 57M
-        # 1M reads, 530M
-        # 5M reads, 2670M
-        # 20M reads, 10'600M
-        # approximate memory usage is 550M per 1M reads
-        memory = int((nreads/1e6)*600 + 2000)
-        with logger_mutex:
-            logger.debug("Launching job, virtual_free={:d}M".format(memory))
+        if nreads > 30e6:
+            memory = '24G'
+        else:
+            memory = '16G'
         job_other_options = " -pe smp " + str(1) +\
                             " -q " + job_queue_name +\
                             " -l h_rt=" + printTimeDelta(walltime) +\
-                            " -l virtual_free={:d}M".format(memory)
+                            " -l virtual_free={}".format(memory)
 
         # ruffus.drmaa_wrapper.run_job
         stdout_res, stderr_res = run_job(cmd_str=cmd, job_name=task_name, logger=logger,
@@ -1334,7 +1438,7 @@ task_name = 'delete_intermediate_files'
 def delete_intermediate_files():
 
     print("Delete intermediate files.")
-    for p in intermediateTaskPathList:
+    for p in taskPathList:
         for f in p.glob('*'):
             print("deleting file:", f)
             f.unlink()
@@ -1403,9 +1507,7 @@ pipelineDocFile.write_text(pipelineDoc)
 history_file = "." + pipeline_name + ".ruffus_history.sqlite"
 options.history_file = history_file
 pipeline_printout(history_file=history_file)
-# gnu_make_maximal_rebuild_mode = True
-gnu_make_maximal_rebuild_mode = False
-cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose,
-            gnu_make_maximal_rebuild_mode=gnu_make_maximal_rebuild_mode)
+cmdline.run(options, multithread=options.njobs, logger=logger, verbose=options.verbose)
 if not run_locally:
     drmaa_session.exit()
+
