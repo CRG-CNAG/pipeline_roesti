@@ -225,7 +225,7 @@ options.align_alignmentMode = 'end-to-end'
 # -D 20 -R 3 -N 0 -L 20 -i S,1,0.50
 if options.library_type == 'ribo-seq':
     options.align_nMismatches = 1
-    options.align_seedLength = 16
+    options.align_seedLength = 14
     options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
 elif options.library_type == 'rna-seq':
     options.align_nMismatches = 0
@@ -233,7 +233,7 @@ elif options.library_type == 'rna-seq':
     options.align_seedInterval = 'S,1,1.15'    # mode sensitive. For read length of 50, seed interval is 1 + 1.15*sqrt(50) = 9.13
 elif options.library_type == 'hydro-trna-seq':
     options.align_nMismatches = 1
-    options.align_seedLength = 16
+    options.align_seedLength = 14
     options.align_seedInterval = 'S,1,0.50'    # mode very sensitive. For read length of 50, seed interval is 1 + 0.5*sqrt(50) = 4.53
 
 options.align_maxAlignAttempts = 20    # very sensitive: -D 20
