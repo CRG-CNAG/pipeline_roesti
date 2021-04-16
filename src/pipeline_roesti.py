@@ -189,7 +189,7 @@ if options.host == 'cluster':
     #                                                           str(loadDependenciesScriptPath),
     #                                                           str(outputPath))
     cmd_source_bash_profile = ". \"{}\" && cd \"{}\" &&".format(str(loadDependenciesScriptPath),
-                                                        str(outputPath))
+                                                                str(outputPath))
 else:
     cmd_source_bash_profile = "cd \"{}\" &&".format(str(outputPath))
 
