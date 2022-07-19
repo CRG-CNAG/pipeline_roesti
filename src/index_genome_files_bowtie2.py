@@ -140,6 +140,10 @@ def index_genome_files_bowtie2(genbankFileList=None, fastaFileList=None, outputN
             print("genomeList", [g['genomeId'] for g in genomeList])
             genomeIdComposed = "_".join([g['genomeId'] for g in genomeList])
             outputName = genomeIdComposed
+            # Cut out long names due to large number of genomes (for example, fasta file with many sequences)
+            max_length = 120
+            if len(outputName) > max_length:
+                outputName = outputName[:max_length]
         else:
             print("ERROR: genome id could not be extracted from the genbank or fasta files,",
                   "please use the -o option to set the output name.")
