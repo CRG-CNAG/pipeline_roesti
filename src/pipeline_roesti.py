@@ -139,12 +139,12 @@ def group_paired_end_fastq_files(fastqFiles):
     """Group paired-end fastq files together"""
     fastqFilesPE = []
     for f1 in fastqFiles:
-        f1match = re.match(r"^(.+)(read1|r1)\.fastq(\.gz)?$", Path(f1).name)
+        f1match = re.match(r"^(.+)(read1|r1|R1)(_\d\d\d)?\.fastq(\.gz)?$", Path(f1).name)
         if f1match:
             read1Filename = f1
             read1FastaBasename = f1match.group(1)
             for f2 in fastqFiles:
-                if re.match(r'^' + read1FastaBasename + r"(read2|r2)\.fastq(\.gz)?$", Path(f2).name):
+                if re.match(r'^' + read1FastaBasename + r"(read2|r2|R2)(_\d\d\d)?\.fastq(\.gz)?$", Path(f2).name):
                     read2Filename = f2
                     fastqFilesPE.append((read1Filename, read2Filename))
     return fastqFilesPE
@@ -252,7 +252,7 @@ if run_locally:
     options.samtools_sort_tmp_dir = '.'
 else:
     options.samtools_sort_tmp_dir = '$TMPDIR'
-options.samtools_sort_max_mem = 28000    # M
+options.samtools_sort_max_mem = 34000    # M
 options.samtools_sort_nthread = 4
 # Note: maximum memory per thread **has to be an integer**, otherwise it is interpreted as bytes
 # Note: we have to allocate some free memory for the main samtools thread, probably for the
@@ -482,8 +482,8 @@ intermediateTaskPathList.append(task_path)
 # Group together file pairs
 @collate(
     fastqFiles,
-
-    formatter(r'^/?(.+/)*(?P<SAMPLENAME>.+)(read[12]|r[12])\.fastq(\.gz)?$'),
+    
+    formatter(r'^/?(.+/)*(?P<SAMPLENAME>.+)(read[12]|[Rr][12])(_\d\d\d)?\.fastq(\.gz)?$'),
 
     # Create output parameter supplied to next task
     [str(task_path) + "/{SAMPLENAME[0]}read1.trimmed.fastq.gz",   # paired file 1
@@ -1076,25 +1076,25 @@ def filter_alignments(sorted_bam_file,
                       input_path,
                       output_path,
                       task_name, logger, logger_mutex):
-       
 
     filter_script_filename = str(scriptPath / 'pipeline_roesti_filter_script.sh')
     filter_alignments_nthreads = min(options.nThreads, 8)
 
     cmd = cmd_source_bash_profile +\
-          cmdProgressRequest + '--progress "Filter alignments by quality and size and report statistics" --n 5 && ' +\
-          " \"{}\"".format(filter_script_filename) +\
-          " \"{}\"".format(sample_name) +\
-          " \"{}\"".format(input_path) +\
-          " \"{}\"".format(output_path) +\
-          " " + str(options.filter_alignments_quality_threshold) +\
-          " false" +\
-          " \"{}\"".format(options.rRNA_bedfile) +\
-          " \"{}\"".format(options.rRNA_tRNA_bedfile) +\
-          " \"{}\"".format(str(scriptPath)) +\
-          " " + ("true" if options.remove_rRNA else "false") +\
-          " " + options.seq_end +\
-          " " + str(filter_alignments_nthreads)
+        cmdProgressRequest +\
+        '--progress "Filter alignments by quality and size and report statistics" --n 5 && ' +\
+        " \"{}\"".format(filter_script_filename) +\
+        " \"{}\"".format(sample_name) +\
+        " \"{}\"".format(input_path) +\
+        " \"{}\"".format(output_path) +\
+        " " + str(options.filter_alignments_quality_threshold) +\
+        " false" +\
+        " \"{}\"".format(options.rRNA_bedfile) +\
+        " \"{}\"".format(options.rRNA_tRNA_bedfile) +\
+        " \"{}\"".format(str(scriptPath)) +\
+        " " + ("true" if options.remove_rRNA else "false") +\
+        " " + options.seq_end +\
+        " " + str(filter_alignments_nthreads)
     with logger_mutex:
         logger.debug(cmd)
 

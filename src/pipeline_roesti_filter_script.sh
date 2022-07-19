@@ -193,7 +193,8 @@ wc -l < ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed > ${OUTPUT_PATH_LOCAL}/${SAM
 # For 1e8 lines, system sort, 1 thread, 11mn28s, 2.7M peak_mem
 # For 1e8 lines, sort (GNU coreutils) 8.4, 8 threads, 1mn5s, 2.7M peak_mem
 # For 1e8 lines, sort (GNU coreutils) 8.4, 16 threads, 0mn54s, 2.7M peak_mem
-/users/lserrano/mweber/local/bin/sort ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed -k 1,1 -k 2,2n -k 3,3n --parallel=${NTHREADS} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed.sorted
+/users/lserrano/mweber/local/bin/sort ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed -k 1,1 -k 2,2n -k 3,3n \
+    --parallel=${NTHREADS} > ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed.sorted
 
 while [ ! -f ${OUTPUT_PATH_LOCAL}/${SAMPLE}.filtered.bed.sorted ]
 do
